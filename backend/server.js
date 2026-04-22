@@ -117,7 +117,7 @@ app.post("/api/school/messages/refresh", authenticateToken, (req, res) => {
   const filePath = path.join(__dirname, "vulcan_messages.json");
   if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
   runPythonScript("email_checker.py")
-    .then(() => res.json(readJsonFile(filePath)))
+    .then((data) => res.json(data))
     .catch((err) => res.status(500).json({ error: err.message }));
 });
 
@@ -129,7 +129,7 @@ app.post("/api/school/payments/refresh", authenticateToken, (req, res) => {
   const filePath = path.join(__dirname, "payment_messages.json");
   if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
   runPythonScript("payment_checker.py")
-    .then(() => res.json(deduplicatePayments(readJsonFile(filePath))))
+    .then((data) => res.json(deduplicatePayments(Array.isArray(data) ? data : [])))
     .catch((err) => res.status(500).json({ error: err.message }));
 });
 
@@ -141,7 +141,7 @@ app.post("/api/preschool/payments/refresh", authenticateToken, (req, res) => {
   const filePath = path.join(__dirname, "preschool_payment_messages.json");
   if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
   runPythonScript("payment_checker_preschool.py")
-    .then(() => res.json(deduplicatePayments(readJsonFile(filePath))))
+    .then((data) => res.json(deduplicatePayments(Array.isArray(data) ? data : [])))
     .catch((err) => res.status(500).json({ error: err.message }));
 });
 
