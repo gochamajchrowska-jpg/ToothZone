@@ -2,19 +2,41 @@
 //  Tooth Zone — Backend Express
 // ============================================================
 
-const express  = require("express");
-const bcrypt   = require("bcrypt");
-const jwt      = require("jsonwebtoken");
-const cors     = require("cors");
-const fs       = require("fs");
-const path     = require("path");
-const { exec } = require("child_process");
+const express   = require("express");
+const bcrypt    = require("bcrypt");
+const jwt       = require("jsonwebtoken");
+const cors      = require("cors");
+const fs        = require("fs");
+const path      = require("path");
+const { exec }  = require("child_process");
+const sqlite3   = require("sqlite3").verbose();
 
 const app        = express();
 const PORT       = process.env.PORT || 5000;
 const JWT_SECRET = process.env.JWT_SECRET || "tooth-zone-super-secret-key-change-in-prod";
 
-const users = [];
+// ── Baza danych SQLite ────────────────────────────────────────
+const DB_PATH = process.env.DB_PATH || path.join(__dirname, "users.db");
+const db = new sqlite3.Database(DB_PATH, (err) => {
+  if (err) console.error("[DB] Błąd:", err.message);
+  else console.log(`[DB] SQLite gotowy: ${DB_PATH}`);
+});
+
+// Pomocniki: promisify zapytań SQLite
+const dbGet = (sql, params=[]) => new Promise((res, rej) =>
+  db.get(sql, params, (err, row) => err ? rej(err) : res(row)));
+const dbRun = (sql, params=[]) => new Promise((res, rej) =>
+  db.run(sql, params, function(err) { err ? rej(err) : res(this); }));
+
+// Utwórz tabelę użytkowników jeśli nie istnieje
+db.serialize(() => {
+  db.run(`CREATE TABLE IF NOT EXISTS users (
+    id       INTEGER PRIMARY KEY AUTOINCREMENT,
+    email    TEXT    UNIQUE NOT NULL,
+    password TEXT    NOT NULL,
+    created  TEXT    DEFAULT (datetime('now'))
+  )`);
+});
 
 app.use(cors({ origin: true, credentials: true }));
 app.use(express.json());
@@ -90,21 +112,37 @@ app.post("/register", async (req, res) => {
   const { email, password } = req.body;
   if (!email || !password) return res.status(400).json({ message: "Adres e-mail i hasło są wymagane." });
   if (password.length < 6) return res.status(400).json({ message: "Hasło musi mieć co najmniej 6 znaków." });
-  if (users.find((u) => u.email === email)) return res.status(409).json({ message: "Użytkownik z tym adresem e-mail już istnieje." });
-  const hashed = await bcrypt.hash(password, 10);
-  users.push({ id: users.length + 1, email, password: hashed });
-  console.log(`✅ Nowy użytkownik: ${email}`);
-  res.status(201).json({ message: "Rejestracja udana! Możesz się teraz zalogować." });
+
+  try {
+    const existing = await dbGet("SELECT id FROM users WHERE email = ?", [email]);
+    if (existing) return res.status(409).json({ message: "Użytkownik z tym adresem e-mail już istnieje." });
+
+    const hashed = await bcrypt.hash(password, 10);
+    await dbRun("INSERT INTO users (email, password) VALUES (?, ?)", [email, hashed]);
+    console.log(`✅ Nowy użytkownik: ${email}`);
+    res.status(201).json({ message: "Rejestracja udana! Możesz się teraz zalogować." });
+  } catch (err) {
+    console.error("[Register] Błąd:", err.message);
+    res.status(500).json({ message: "Błąd serwera podczas rejestracji." });
+  }
 });
 
 app.post("/login", async (req, res) => {
   const { email, password } = req.body;
   if (!email || !password) return res.status(400).json({ message: "Adres e-mail i hasło są wymagane." });
-  const user = users.find((u) => u.email === email);
-  if (!user || !(await bcrypt.compare(password, user.password))) return res.status(401).json({ message: "Nieprawidłowy adres e-mail lub hasło." });
-  const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: "2h" });
-  console.log(`🔑 Zalogowano: ${email}`);
-  res.json({ token, email: user.email });
+
+  try {
+    const user = await dbGet("SELECT * FROM users WHERE email = ?", [email]);
+    if (!user || !(await bcrypt.compare(password, user.password))) {
+      return res.status(401).json({ message: "Nieprawidłowy adres e-mail lub hasło." });
+    }
+    const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: "24h" });
+    console.log(`🔑 Zalogowano: ${email}`);
+    res.json({ token, email: user.email });
+  } catch (err) {
+    console.error("[Login] Błąd:", err.message);
+    res.status(500).json({ message: "Błąd serwera podczas logowania." });
+  }
 });
 
 app.get("/dashboard", authenticateToken, (req, res) => {
