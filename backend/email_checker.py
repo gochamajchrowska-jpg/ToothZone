@@ -132,17 +132,26 @@ def fetch_vulcan_emails():
 
         mail.select("INBOX")
 
-        # Szukaj maili od Vulcan
-        status, data = mail.search(None, f'FROM "{VULCAN_SENDER}"')
+        # Szukaj maili od Vulcan — opcjonalnie tylko z ostatnich N dni
+        if SINCE_DAYS:
+            since_date = (datetime.now() - timedelta(days=SINCE_DAYS)).strftime("%d-%b-%Y")
+            search_criteria = f'FROM "{VULCAN_SENDER}" SINCE {since_date}'
+            print(f"[INFO] Tryb przyrostowy — maile od {since_date}", file=sys.stderr)
+        else:
+            search_criteria = f'FROM "{VULCAN_SENDER}"'
+            print("[INFO] Tryb pełny — wszystkie maile", file=sys.stderr)
+
+        status, data = mail.search(None, search_criteria)
         if status != "OK":
             print("[WARN] Brak wyników.", file=sys.stderr)
             return []
 
         mail_ids = data[0].split()
-        print(f"[INFO] Znaleziono {len(mail_ids)} wiadomości od Vulcan.", file=sys.stderr)
+        print(f"[INFO] Znaleziono {len(mail_ids)} wiadomości.", file=sys.stderr)
 
-        # Pobierz tylko ostatnie 150 wiadomości (najnowsze)
-        mail_ids = mail_ids[-150:]
+        # W trybie pełnym ogranicz do ostatnich 150
+        if not SINCE_DAYS:
+            mail_ids = mail_ids[-150:]
 
         for mail_id in mail_ids:
             status, msg_data = mail.fetch(mail_id, "(RFC822)")

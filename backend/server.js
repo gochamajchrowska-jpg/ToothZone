@@ -45,7 +45,7 @@ function authenticateToken(req, res, next) {
   }
 }
 
-function runPythonScript(scriptName, timeoutMs = 120000) {
+function runPythonScript(scriptName, timeoutMs = 120000, options = {}) {
   return new Promise((resolve, reject) => {
     const scriptPath = path.join(__dirname, scriptName);
     exec(`python3 "${scriptPath}"`, { timeout: timeoutMs }, (error, stdout, stderr) => {
@@ -110,7 +110,8 @@ app.get("/api/vulcan", authenticateToken, async (req, res) => {
 });
 
 app.get("/api/school/messages", authenticateToken, (req, res) => {
-  res.json(readJsonFile(path.join(__dirname, "vulcan_messages.json")));
+  // Zwróć cache jeśli jest niepusty, inaczej pusty array
+  res.json(messagesCache);
 });
 
 app.post("/api/school/messages/refresh", authenticateToken, (req, res) => {
@@ -145,6 +146,28 @@ app.post("/api/preschool/payments/refresh", authenticateToken, (req, res) => {
     .catch((err) => res.status(500).json({ error: err.message }));
 });
 
+// ── Harmonogram: co godzinę pobierz nowe wiadomości ────────────
+// sinceDays=2 = szukaj tylko maili z ostatnich 2 dni (szybkie)
+let messagesCache = []; // cache wiadomości w pamięci
+
+function scheduleEmailRefresh() {
+  console.log("[Scheduler] Uruchamiam odświeżanie wiadomości...");
+  runPythonScript("email_checker.py", 120000, { sinceDays: 2 })
+    .then((newMessages) => {
+      if (!Array.isArray(newMessages) || newMessages.length === 0) return;
+      // Dodaj nowe wiadomości do cache (deduplikuj po id)
+      const existingIds = new Set(messagesCache.map(m => m.id));
+      const added = newMessages.filter(m => !existingIds.has(m.id));
+      if (added.length > 0) {
+        messagesCache = [...added, ...messagesCache];
+        console.log(`[Scheduler] Dodano ${added.length} nowych wiadomości.`);
+      } else {
+        console.log("[Scheduler] Brak nowych wiadomości.");
+      }
+    })
+    .catch((err) => console.error(`[Scheduler] Błąd: ${err.message}`));
+}
+
 // Przy starcie zapisz konfigurację emaila do pliku
 // (Railway nie przekazuje env vars do child_process exec)
 const emailConfigPath = path.join(__dirname, "email_config.json");
@@ -159,4 +182,17 @@ console.log(`[Config] email_config.json zapisany (EMAIL=${emailConfig.EMAIL_ADDR
 
 app.listen(PORT, () => {
   console.log(`🦷 Tooth Zone backend działa na http://localhost:${PORT}`);
+
+  // Pierwsze pobranie wiadomości przy starcie (pełne)
+  runPythonScript("email_checker.py", 120000)
+    .then((data) => {
+      if (Array.isArray(data)) {
+        messagesCache = data;
+        console.log(`[Startup] Załadowano ${data.length} wiadomości do cache.`);
+      }
+    })
+    .catch((err) => console.error(`[Startup] Błąd ładowania wiadomości: ${err.message}`));
+
+  // Co godzinę pobierz nowe wiadomości przyrostowo
+  setInterval(scheduleEmailRefresh, 60 * 60 * 1000);
 });
