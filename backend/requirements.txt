@@ -1,0 +1,2 @@
+vulcan-api==2.4.2
+imapclient

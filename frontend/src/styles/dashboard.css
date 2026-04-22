@@ -1,0 +1,480 @@
+/* ============================================================
+   dashboard.css — Style panelu głównego i nawigacji
+   Zmiana: usunięto motyw stomatologiczny, nowe kolory rodzinne,
+           dodano style nawigacji zakładkowej i listy wydarzeń
+   ============================================================ */
+
+/* ── Układ całej strony ─────────────────────────────────────── */
+.app-page {
+  min-height: 100vh;
+  background: var(--clr-bg);
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Górny pasek (header) ───────────────────────────────────── */
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--clr-surface);
+  border-bottom: 1px solid var(--clr-border);
+  padding: var(--space-md) var(--space-xl);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: var(--shadow-sm);
+}
+
+.app-logo {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.app-logo-main {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--clr-primary);
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+
+.app-logo-sub {
+  font-size: 0.7rem;
+  color: var(--clr-text-muted);
+  font-weight: 400;
+  letter-spacing: 0.01em;
+}
+
+.app-header-right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+.app-user-email {
+  font-size: 0.82rem;
+  color: var(--clr-text-muted);
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.btn-logout {
+  padding: 0.4rem 0.9rem;
+  background: transparent;
+  color: var(--clr-text-muted);
+  border: 1.5px solid var(--clr-border);
+  border-radius: var(--radius-sm);
+  font-size: 0.8rem;
+  font-weight: 600;
+  font-family: var(--font-body);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-logout:hover {
+  background: var(--clr-error-bg);
+  color: var(--clr-error-text);
+  border-color: var(--clr-error-border);
+}
+
+/* ── Nawigacja zakładkowa ───────────────────────────────────── */
+/* Pasek z linkami: Dashboard / Szkoła / Przedszkole */
+.app-nav {
+  background: var(--clr-surface);
+  border-bottom: 1px solid var(--clr-border);
+  display: flex;
+  gap: 0;
+  padding: 0 var(--space-xl);
+  overflow-x: auto;         /* przewijanie na małych ekranach */
+}
+
+.app-nav-link {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0.8rem 1.1rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--clr-text-muted);
+  text-decoration: none;
+  border-bottom: 3px solid transparent;
+  transition: color 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+
+.app-nav-link:hover {
+  color: var(--clr-primary);
+  text-decoration: none;
+}
+
+/* Klasa aktywna — dodawana przez NavLink automatycznie */
+.app-nav-link.active {
+  color: var(--clr-primary);
+  border-bottom-color: var(--clr-primary);
+  font-weight: 600;
+}
+
+/* ── Treść główna ───────────────────────────────────────────── */
+.app-main {
+  flex: 1;
+  max-width: 860px;
+  width: 100%;
+  margin: 0 auto;
+  padding: var(--space-2xl) var(--space-xl);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xl);
+}
+
+/* ── Sekcja hero (baner powitalny) ──────────────────────────── */
+.dash-hero {
+  background: linear-gradient(135deg, var(--clr-primary) 0%, #5ba3d4 100%);
+  border-radius: var(--radius-lg);
+  padding: var(--space-2xl);
+  color: #fff;
+  animation: heroIn 0.5s ease-out both;
+}
+
+@keyframes heroIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.dash-hero-badge {
+  display: inline-block;
+  background: rgba(255,255,255,0.22);
+  padding: 2px 12px;
+  border-radius: 100px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: var(--space-md);
+}
+
+.dash-welcome {
+  font-family: var(--font-display);
+  font-size: clamp(1.5rem, 4vw, 2.2rem);
+  font-weight: 800;
+  line-height: 1.2;
+  margin-bottom: var(--space-sm);
+}
+
+.dash-tagline {
+  font-size: 0.95rem;
+  opacity: 0.88;
+  max-width: 480px;
+}
+
+/* ── Sekcja ogólna ──────────────────────────────────────────── */
+.dash-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  animation: sectionIn 0.4s ease-out 0.1s both;
+}
+
+@keyframes sectionIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.dash-section-title {
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--clr-text);
+}
+
+/* ── Lista wydarzeń ─────────────────────────────────────────── */
+.events-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* Pojedyncza karta wydarzenia */
+.event-card {
+  background: var(--clr-surface);
+  border: 1.5px solid var(--clr-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-md) var(--space-lg);
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.event-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+/* Kolorowy pasek z lewej strony karty — zależny od kategorii */
+.event-card--school  { border-left: 4px solid var(--clr-school); }
+.event-card--preschool { border-left: 4px solid var(--clr-preschool); }
+.event-card--other   { border-left: 4px solid var(--clr-other); }
+
+.event-icon {
+  font-size: 1.5rem;
+  flex-shrink: 0;
+}
+
+.event-info {
+  flex: 1;
+}
+
+.event-title {
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--clr-text);
+}
+
+.event-date {
+  font-size: 0.8rem;
+  color: var(--clr-text-muted);
+  margin-top: 2px;
+}
+
+/* Plakietka kategorii */
+.event-badge {
+  padding: 3px 10px;
+  border-radius: 100px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  flex-shrink: 0;
+}
+
+.event-badge--school {
+  background: var(--clr-school-bg);
+  color: var(--clr-school);
+}
+
+.event-badge--preschool {
+  background: var(--clr-preschool-bg);
+  color: var(--clr-preschool);
+}
+
+.event-badge--other {
+  background: var(--clr-other-bg);
+  color: var(--clr-other);
+}
+
+/* ── Style podstron (Szkoła / Przedszkole) ──────────────────── */
+.subpage-hero {
+  border-radius: var(--radius-lg);
+  padding: var(--space-2xl);
+  color: #fff;
+}
+
+.subpage-hero--school {
+  background: linear-gradient(135deg, #4aab63 0%, #6bc47f 100%);
+}
+
+.subpage-hero--preschool {
+  background: linear-gradient(135deg, #e89c3a 0%, #f0b55a 100%);
+}
+
+.subpage-title {
+  font-family: var(--font-display);
+  font-size: clamp(1.4rem, 3vw, 2rem);
+  font-weight: 800;
+  margin-bottom: var(--space-sm);
+}
+
+.subpage-placeholder {
+  background: var(--clr-surface);
+  border: 2px dashed var(--clr-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-2xl);
+  text-align: center;
+  color: var(--clr-text-muted);
+}
+
+.subpage-placeholder-icon {
+  font-size: 2.5rem;
+  display: block;
+  margin-bottom: var(--space-md);
+}
+
+.subpage-placeholder p {
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+.subpage-placeholder-hint {
+  font-size: 0.85rem;
+  color: var(--clr-text-light);
+  margin-top: var(--space-sm);
+}
+
+/* ── Responsywność ──────────────────────────────────────────── */
+@media (max-width: 600px) {
+  .app-header  { padding: var(--space-md); }
+  .app-nav     { padding: 0 var(--space-md); }
+  .app-main    { padding: var(--space-lg) var(--space-md); }
+  .dash-hero   { padding: var(--space-xl) var(--space-lg); }
+  .app-user-email { display: none; }
+  .event-card  { flex-wrap: wrap; }
+}
+
+/* ============================================================
+   Style sekcji Vulcan (e-dziennik)
+   ============================================================ */
+
+/* ── Stan ładowania ─────────────────────────────────────────── */
+.vulcan-loading {
+  background: var(--clr-primary-light);
+  color: var(--clr-primary-dark);
+  border-radius: var(--radius-md);
+  padding: var(--space-md) var(--space-lg);
+  font-size: 0.9rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  animation: sectionIn 0.3s ease-out both;
+}
+
+.vulcan-spinner {
+  font-size: 1.1rem;
+  animation: spin 1.5s linear infinite;
+  display: inline-block;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+/* ── Baner błędu ────────────────────────────────────────────── */
+.vulcan-error-banner {
+  background: var(--clr-error-bg);
+  color: var(--clr-error-text);
+  border: 1.5px solid var(--clr-error-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-md) var(--space-lg);
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+/* ── Karta ucznia ───────────────────────────────────────────── */
+.vulcan-student-card {
+  background: var(--clr-surface);
+  border: 1.5px solid var(--clr-border);
+  border-left: 4px solid var(--clr-primary);
+  border-radius: var(--radius-md);
+  padding: var(--space-lg);
+}
+
+.vulcan-student-name {
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--clr-text);
+  margin-bottom: var(--space-xs);
+}
+
+.vulcan-student-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-md);
+  font-size: 0.85rem;
+  color: var(--clr-text-muted);
+}
+
+/* ── Lista ogólna (oceny + lekcje) ─────────────────────────── */
+.vulcan-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Pojedynczy wiersz listy */
+.vulcan-list-item {
+  background: var(--clr-surface);
+  border: 1.5px solid var(--clr-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-md) var(--space-lg);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.vulcan-list-item:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+/* Lewa strona — tytuł i podtytuł */
+.vulcan-item-main {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+}
+
+.vulcan-item-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--clr-text);
+}
+
+.vulcan-item-sub {
+  font-size: 0.78rem;
+  color: var(--clr-text-muted);
+}
+
+/* Prawa strona — ocena / godzina */
+.vulcan-item-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+  flex-shrink: 0;
+}
+
+/* Ocena — duża i wyróżniona */
+.vulcan-grade-value {
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: var(--clr-primary);
+  line-height: 1;
+}
+
+/* Godzina lekcji */
+.vulcan-lesson-time {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--clr-text);
+}
+
+.vulcan-item-date {
+  font-size: 0.75rem;
+  color: var(--clr-text-light);
+}
+
+/* ── Pusta sekcja ───────────────────────────────────────────── */
+.vulcan-empty {
+  background: var(--clr-surface);
+  border: 2px dashed var(--clr-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-lg);
+  text-align: center;
+  color: var(--clr-text-muted);
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-sm);
+}
