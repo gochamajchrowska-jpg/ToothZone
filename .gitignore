@@ -1,0 +1,21 @@
+# Zależności Node.js
+node_modules/
+frontend/node_modules/
+backend/node_modules/
+
+# Pliki środowiskowe (hasła!)
+.env
+backend/.env
+
+# Dane generowane przez skrypty
+backend/vulcan_messages.json
+backend/payment_messages.json
+backend/preschool_payment_messages.json
+backend/keystore.json
+backend/account.json
+
+# Vercel
+.vercel/
+
+# Build
+frontend/dist/
