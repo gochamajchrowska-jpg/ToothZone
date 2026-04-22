@@ -54,7 +54,21 @@ function runPythonScript(scriptName, timeoutMs = 60000) {
       IMAP_SERVER:    process.env.IMAP_SERVER    || "imap.wp.pl",
       IMAP_PORT:      process.env.IMAP_PORT      || "993",
     };
-    exec(`python3 "${scriptPath}"`, { timeout: timeoutMs, env }, (error, stdout, stderr) => {
+    // Przekaż dane jako argumenty wiersza poleceń — niezawodne na Railway
+    const emailAddr = process.env.EMAIL_ADDRESS  || "";
+    const emailPass = process.env.EMAIL_PASSWORD || "";
+    const imapServer = process.env.IMAP_SERVER   || "imap.wp.pl";
+    const imapPort   = process.env.IMAP_PORT     || "993";
+    console.log(`[DEBUG] EMAIL_ADDRESS=${emailAddr ? "SET" : "EMPTY"}, IMAP=${imapServer}`);
+    exec(`python3 "${scriptPath}"`, { timeout: timeoutMs, env: {
+      ...process.env,
+      EMAIL_ADDRESS: emailAddr,
+      EMAIL_PASSWORD: emailPass,
+      IMAP_SERVER: imapServer,
+      IMAP_PORT: imapPort,
+      PATH: process.env.PATH,
+      HOME: process.env.HOME || "/root",
+    }}, (error, stdout, stderr) => {
       if (stderr) console.error(`[${scriptName}] stderr:\n${stderr}`);
       if (error)  return reject(new Error(`Błąd skryptu: ${error.message}`));
       try {
@@ -197,6 +211,17 @@ app.post("/api/school/payments/refresh", authenticateToken, (req, res) => {
 });
 
 // ── Start ────────────────────────────────────────────────────
+// ── Diagnostyka (tymczasowa) ─────────────────────────────────
+app.get("/debug-env", (req, res) => {
+  res.json({
+    EMAIL_ADDRESS:  process.env.EMAIL_ADDRESS  ? "SET" : "MISSING",
+    EMAIL_PASSWORD: process.env.EMAIL_PASSWORD ? "SET" : "MISSING",
+    IMAP_SERVER:    process.env.IMAP_SERVER    || "MISSING",
+    IMAP_PORT:      process.env.IMAP_PORT      || "MISSING",
+    PORT:           process.env.PORT           || "MISSING",
+  });
+});
+
 app.listen(PORT, () => {
   console.log(`🦷 Tooth Zone backend działa na http://localhost:${PORT}`);
 });
