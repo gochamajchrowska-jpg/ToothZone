@@ -85,4 +85,91 @@ app.post("/register", async (req, res) => {
     return res.status(400).json({ message: "Hasło musi mieć co najmniej 6 znaków." });
   }
   if (users.find((u) => u.email === email)) {
-    return res.s
+    return res.status(409).json({ message: "Użytkownik z tym adresem e-mail już istnieje." });
+  }
+  const hashed = await bcrypt.hash(password, 10);
+  users.push({ id: users.length + 1, email, password: hashed });
+  console.log(`✅ Nowy użytkownik: ${email}`);
+  res.status(201).json({ message: "Rejestracja udana! Możesz się teraz zalogować." });
+});
+
+app.post("/login", async (req, res) => {
+  const { email, password } = req.body;
+  if (!email || !password) {
+    return res.status(400).json({ message: "Adres e-mail i hasło są wymagane." });
+  }
+  const user = users.find((u) => u.email === email);
+  if (!user || !(await bcrypt.compare(password, user.password))) {
+    return res.status(401).json({ message: "Nieprawidłowy adres e-mail lub hasło." });
+  }
+  const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: "2h" });
+  console.log(`🔑 Zalogowano: ${email}`);
+  res.json({ token, email: user.email });
+});
+
+app.get("/dashboard", authenticateToken, (req, res) => {
+  res.json({
+    message: `Witaj w Tooth Zone, ${req.user.email}!`,
+    expenses: { summary: "Śledzenie wydatków wkrótce dostępne.", total: null, recent: [] },
+  });
+});
+
+app.get("/api/vulcan", authenticateToken, async (req, res) => {
+  try {
+    res.json(await runPythonScript("vulcan_script.py"));
+  } catch (err) {
+    console.error(`[Vulcan] ${err.message}`);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get("/api/school/messages", authenticateToken, (req, res) => {
+  res.json(readJsonFile(path.join(__dirname, "vulcan_messages.json")));
+});
+
+app.post("/api/school/messages/refresh", authenticateToken, (req, res) => {
+  const filePath = path.join(__dirname, "vulcan_messages.json");
+  if (fs.existsSync(filePath)) {
+    fs.unlinkSync(filePath);
+    console.log("[Messages] Usunięto stary vulcan_messages.json");
+  }
+  runPythonScript("email_checker.py")
+    .then(() => res.json(readJsonFile(filePath)))
+    .catch((err) => res.status(500).json({ error: err.message }));
+});
+
+app.get("/api/school/payments", authenticateToken, (req, res) => {
+  const payments = readJsonFile(path.join(__dirname, "payment_messages.json"));
+  res.json(deduplicatePayments(payments));
+});
+
+app.post("/api/school/payments/refresh", authenticateToken, (req, res) => {
+  const filePath = path.join(__dirname, "payment_messages.json");
+  if (fs.existsSync(filePath)) {
+    fs.unlinkSync(filePath);
+    console.log("[Payments] Usunięto stary payment_messages.json");
+  }
+  runPythonScript("payment_checker.py")
+    .then(() => res.json(deduplicatePayments(readJsonFile(filePath))))
+    .catch((err) => res.status(500).json({ error: err.message }));
+});
+
+app.get("/api/preschool/payments", authenticateToken, (req, res) => {
+  const payments = readJsonFile(path.join(__dirname, "preschool_payment_messages.json"));
+  res.json(deduplicatePayments(payments));
+});
+
+app.post("/api/preschool/payments/refresh", authenticateToken, (req, res) => {
+  const filePath = path.join(__dirname, "preschool_payment_messages.json");
+  if (fs.existsSync(filePath)) {
+    fs.unlinkSync(filePath);
+    console.log("[Preschool/Payments] Usunięto stary plik");
+  }
+  runPythonScript("payment_checker_preschool.py")
+    .then(() => res.json(deduplicatePayments(readJsonFile(filePath))))
+    .catch((err) => res.status(500).json({ error: err.message }));
+});
+
+app.listen(PORT, () => {
+  console.log(`🦷 Tooth Zone backend działa na http://localhost:${PORT}`);
+});
