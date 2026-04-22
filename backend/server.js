@@ -2,13 +2,13 @@
 //  Tooth Zone — Backend Express
 // ============================================================
 
-const express    = require("express");
-const bcrypt     = require("bcrypt");
-const jwt        = require("jsonwebtoken");
-const cors       = require("cors");
-const fs         = require("fs");
-const path       = require("path");
-const { exec }   = require("child_process");
+const express  = require("express");
+const bcrypt   = require("bcrypt");
+const jwt      = require("jsonwebtoken");
+const cors     = require("cors");
+const fs       = require("fs");
+const path     = require("path");
+const { exec } = require("child_process");
 
 const app        = express();
 const PORT       = process.env.PORT || 5000;
@@ -19,20 +19,14 @@ const users = [];
 app.use(cors({ origin: true, credentials: true }));
 app.use(express.json());
 
-// ── Zapisz config emaila do pliku żeby skrypty Python mogły go odczytać ──
-// Railway przekazuje zmienne do Node.js ale nie zawsze do procesów potomnych
-function writeEmailConfig() {
-  const config = {
-    EMAIL_ADDRESS:  process.env.EMAIL_ADDRESS  || "",
-    EMAIL_PASSWORD: process.env.EMAIL_PASSWORD || "",
-    IMAP_SERVER:    process.env.IMAP_SERVER    || "imap.wp.pl",
-    IMAP_PORT:      process.env.IMAP_PORT      || "993",
-  };
-  const configPath = path.join(__dirname, "email_config.json");
-  fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
-  console.log(`[Config] EMAIL_ADDRESS: ${config.EMAIL_ADDRESS ? "SET" : "EMPTY"}`);
-}
-writeEmailConfig();
+// ── Cache w pamięci ───────────────────────────────────────────
+// Dane żyją w pamięci serwera — po restarcie Railway ładowane automatycznie
+let messagesCache       = [];  // wiadomości e-dziennik
+let paymentsCache       = [];  // płatności szkoła (Marcelina)
+let preschoolCache      = [];  // płatności przedszkole (Iga)
+let dataLoaded          = false; // czy pierwsze ładowanie się skończyło
+
+// ── Helpers ───────────────────────────────────────────────────
 
 function authenticateToken(req, res, next) {
   const token = (req.headers["authorization"] || "").split(" ")[1];
@@ -45,25 +39,23 @@ function authenticateToken(req, res, next) {
   }
 }
 
-function runPythonScript(scriptName, timeoutMs = 120000, options = {}) {
+function runPythonScript(scriptName, timeoutMs = 120000, sinceDays = null) {
   return new Promise((resolve, reject) => {
     const scriptPath = path.join(__dirname, scriptName);
-    exec(`python3 "${scriptPath}"`, { timeout: timeoutMs }, (error, stdout, stderr) => {
+    const sinceArg   = sinceDays ? ` "${sinceDays}"` : "";
+    const emailAddr  = process.env.EMAIL_ADDRESS  || "";
+    const emailPass  = process.env.EMAIL_PASSWORD || "";
+    const imapServer = process.env.IMAP_SERVER    || "imap.wp.pl";
+    const imapPort   = process.env.IMAP_PORT      || "993";
+    const cmd = `python3 "${scriptPath}" "${emailAddr}" "${emailPass}" "${imapServer}" "${imapPort}"${sinceArg}`;
+
+    exec(cmd, { timeout: timeoutMs }, (error, stdout, stderr) => {
       if (stderr) console.error(`[${scriptName}] stderr:\n${stderr}`);
       if (error)  return reject(new Error(`Błąd skryptu: ${error.message}`));
-      try {
-        resolve(JSON.parse(stdout));
-      } catch {
-        reject(new Error(`Skrypt zwrócił niepoprawny JSON.`));
-      }
+      try { resolve(JSON.parse(stdout)); }
+      catch { reject(new Error("Skrypt zwrócił niepoprawny JSON.")); }
     });
   });
-}
-
-function readJsonFile(filePath) {
-  if (!fs.existsSync(filePath)) return [];
-  try { return JSON.parse(fs.readFileSync(filePath, "utf-8")); }
-  catch { return []; }
 }
 
 function deduplicatePayments(payments) {
@@ -78,6 +70,21 @@ function deduplicatePayments(payments) {
   }
   return Array.from(seen.values());
 }
+
+// Scalaj nowe wiadomości z cache (deduplikuj po id)
+function mergeMessages(cache, newItems) {
+  const existingIds = new Set(cache.map(m => m.id));
+  const added = newItems.filter(m => !existingIds.has(m.id));
+  return added.length > 0 ? [...added, ...cache] : cache;
+}
+
+// Scalaj nowe płatności z cache (deduplikuj po miesiac)
+function mergePayments(cache, newItems) {
+  const all = [...newItems, ...cache];
+  return deduplicatePayments(all);
+}
+
+// ── Auth ──────────────────────────────────────────────────────
 
 app.post("/register", async (req, res) => {
   const { email, password } = req.body;
@@ -101,98 +108,134 @@ app.post("/login", async (req, res) => {
 });
 
 app.get("/dashboard", authenticateToken, (req, res) => {
-  res.json({ message: `Witaj w Tooth Zone, ${req.user.email}!`, expenses: { summary: "Wkrótce.", total: null, recent: [] } });
+  res.json({ message: `Witaj w Tooth Zone, ${req.user.email}!` });
 });
 
-app.get("/api/vulcan", authenticateToken, async (req, res) => {
-  try { res.json(await runPythonScript("vulcan_script.py")); }
-  catch (err) { res.status(500).json({ error: err.message }); }
-});
+// ── Wiadomości szkoła ─────────────────────────────────────────
 
 app.get("/api/school/messages", authenticateToken, (req, res) => {
-  // Zwróć cache jeśli jest niepusty, inaczej pusty array
   res.json(messagesCache);
 });
 
 app.post("/api/school/messages/refresh", authenticateToken, (req, res) => {
-  const filePath = path.join(__dirname, "vulcan_messages.json");
-  if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-  runPythonScript("email_checker.py")
-    .then((data) => res.json(data))
+  // Pełne pobranie na żądanie (ostatnie 150)
+  runPythonScript("email_checker.py", 120000)
+    .then((data) => {
+      if (Array.isArray(data)) messagesCache = data;
+      res.json(messagesCache);
+    })
     .catch((err) => res.status(500).json({ error: err.message }));
 });
 
+// ── Płatności szkoła (Marcelina) ──────────────────────────────
+
 app.get("/api/school/payments", authenticateToken, (req, res) => {
-  res.json(deduplicatePayments(readJsonFile(path.join(__dirname, "payment_messages.json"))));
+  res.json(paymentsCache);
 });
 
 app.post("/api/school/payments/refresh", authenticateToken, (req, res) => {
-  const filePath = path.join(__dirname, "payment_messages.json");
-  if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-  runPythonScript("payment_checker.py")
-    .then((data) => res.json(deduplicatePayments(Array.isArray(data) ? data : [])))
+  // Przyrostowe pobranie — sprawdź maile z ostatnich 35 dni (cały miesiąc)
+  runPythonScript("payment_checker.py", 120000, 35)
+    .then((data) => {
+      if (Array.isArray(data) && data.length > 0) {
+        paymentsCache = mergePayments(paymentsCache, data);
+      }
+      res.json(paymentsCache);
+    })
     .catch((err) => res.status(500).json({ error: err.message }));
 });
 
+// ── Płatności przedszkole (Iga) ───────────────────────────────
+
 app.get("/api/preschool/payments", authenticateToken, (req, res) => {
-  res.json(deduplicatePayments(readJsonFile(path.join(__dirname, "preschool_payment_messages.json"))));
+  res.json(preschoolCache);
 });
 
 app.post("/api/preschool/payments/refresh", authenticateToken, (req, res) => {
-  const filePath = path.join(__dirname, "preschool_payment_messages.json");
-  if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-  runPythonScript("payment_checker_preschool.py")
-    .then((data) => res.json(deduplicatePayments(Array.isArray(data) ? data : [])))
+  runPythonScript("payment_checker_preschool.py", 120000, 35)
+    .then((data) => {
+      if (Array.isArray(data) && data.length > 0) {
+        preschoolCache = mergePayments(preschoolCache, data);
+      }
+      res.json(preschoolCache);
+    })
     .catch((err) => res.status(500).json({ error: err.message }));
 });
 
-// ── Harmonogram: co godzinę pobierz nowe wiadomości ────────────
-// sinceDays=2 = szukaj tylko maili z ostatnich 2 dni (szybkie)
-let messagesCache = []; // cache wiadomości w pamięci
+// ── Harmonogram co godzinę ────────────────────────────────────
 
-function scheduleEmailRefresh() {
-  console.log("[Scheduler] Uruchamiam odświeżanie wiadomości...");
-  runPythonScript("email_checker.py", 120000, { sinceDays: 2 })
-    .then((newMessages) => {
-      if (!Array.isArray(newMessages) || newMessages.length === 0) return;
-      // Dodaj nowe wiadomości do cache (deduplikuj po id)
-      const existingIds = new Set(messagesCache.map(m => m.id));
-      const added = newMessages.filter(m => !existingIds.has(m.id));
-      if (added.length > 0) {
-        messagesCache = [...added, ...messagesCache];
-        console.log(`[Scheduler] Dodano ${added.length} nowych wiadomości.`);
-      } else {
-        console.log("[Scheduler] Brak nowych wiadomości.");
-      }
+function hourlyRefresh() {
+  console.log("[Scheduler] Odświeżam dane...");
+
+  // Nowe wiadomości z ostatnich 2 dni
+  runPythonScript("email_checker.py", 120000, 2)
+    .then((data) => {
+      if (!Array.isArray(data) || data.length === 0) return;
+      const before = messagesCache.length;
+      messagesCache = mergeMessages(messagesCache, data);
+      const added = messagesCache.length - before;
+      if (added > 0) console.log(`[Scheduler] +${added} nowych wiadomości.`);
     })
-    .catch((err) => console.error(`[Scheduler] Błąd: ${err.message}`));
+    .catch((err) => console.error(`[Scheduler] Wiadomości błąd: ${err.message}`));
+
+  // Nowe płatności szkoła z ostatnich 35 dni
+  runPythonScript("payment_checker.py", 120000, 35)
+    .then((data) => {
+      if (!Array.isArray(data) || data.length === 0) return;
+      const before = paymentsCache.length;
+      paymentsCache = mergePayments(paymentsCache, data);
+      const added = paymentsCache.length - before;
+      if (added > 0) console.log(`[Scheduler] +${added} nowych płatności (szkoła).`);
+    })
+    .catch((err) => console.error(`[Scheduler] Płatności szkoła błąd: ${err.message}`));
+
+  // Nowe płatności przedszkole z ostatnich 35 dni
+  runPythonScript("payment_checker_preschool.py", 120000, 35)
+    .then((data) => {
+      if (!Array.isArray(data) || data.length === 0) return;
+      const before = preschoolCache.length;
+      preschoolCache = mergePayments(preschoolCache, data);
+      const added = preschoolCache.length - before;
+      if (added > 0) console.log(`[Scheduler] +${added} nowych płatności (przedszkole).`);
+    })
+    .catch((err) => console.error(`[Scheduler] Płatności przedszkole błąd: ${err.message}`));
 }
 
-// Przy starcie zapisz konfigurację emaila do pliku
-// (Railway nie przekazuje env vars do child_process exec)
-const emailConfigPath = path.join(__dirname, "email_config.json");
-const emailConfig = {
-  EMAIL_ADDRESS:  process.env.EMAIL_ADDRESS  || "",
-  EMAIL_PASSWORD: process.env.EMAIL_PASSWORD || "",
-  IMAP_SERVER:    process.env.IMAP_SERVER    || "imap.wp.pl",
-  IMAP_PORT:      process.env.IMAP_PORT      || "993",
-};
-fs.writeFileSync(emailConfigPath, JSON.stringify(emailConfig));
-console.log(`[Config] email_config.json zapisany (EMAIL=${emailConfig.EMAIL_ADDRESS ? "SET" : "EMPTY"})`);
+// ── Start ─────────────────────────────────────────────────────
 
 app.listen(PORT, () => {
   console.log(`🦷 Tooth Zone backend działa na http://localhost:${PORT}`);
 
-  // Pierwsze pobranie wiadomości przy starcie (pełne)
+  // Pierwsze ładowanie przy starcie — wszystkie dane (sekwencyjnie żeby nie przeciążyć IMAP)
+  console.log("[Startup] Ładuję wiadomości...");
   runPythonScript("email_checker.py", 120000)
     .then((data) => {
       if (Array.isArray(data)) {
         messagesCache = data;
-        console.log(`[Startup] Załadowano ${data.length} wiadomości do cache.`);
+        console.log(`[Startup] Wiadomości: ${data.length}`);
       }
+      // Dopiero po wiadomościach ładuj płatności (żeby nie przeciążyć serwera IMAP)
+      console.log("[Startup] Ładuję płatności szkoła...");
+      return runPythonScript("payment_checker.py", 120000);
     })
-    .catch((err) => console.error(`[Startup] Błąd ładowania wiadomości: ${err.message}`));
+    .then((data) => {
+      if (Array.isArray(data)) {
+        paymentsCache = data;
+        console.log(`[Startup] Płatności szkoła: ${data.length}`);
+      }
+      console.log("[Startup] Ładuję płatności przedszkole...");
+      return runPythonScript("payment_checker_preschool.py", 120000);
+    })
+    .then((data) => {
+      if (Array.isArray(data)) {
+        preschoolCache = data;
+        console.log(`[Startup] Płatności przedszkole: ${data.length}`);
+      }
+      dataLoaded = true;
+      console.log("[Startup] Wszystkie dane załadowane ✅");
+    })
+    .catch((err) => console.error(`[Startup] Błąd: ${err.message}`));
 
-  // Co godzinę pobierz nowe wiadomości przyrostowo
-  setInterval(scheduleEmailRefresh, 60 * 60 * 1000);
+  // Co godzinę sprawdzaj nowe dane
+  setInterval(hourlyRefresh, 60 * 60 * 1000);
 });

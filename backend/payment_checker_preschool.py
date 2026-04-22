@@ -16,10 +16,28 @@ import io
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
 sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
 
-EMAIL_ADDRESS  = os.getenv("EMAIL_ADDRESS",  "")
-EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD", "")
-IMAP_SERVER    = os.getenv("IMAP_SERVER",    "imap.wp.pl")
-IMAP_PORT      = int(os.getenv("IMAP_PORT",  "993"))
+# Przyjmuj dane z argv (przekazywane przez Node.js) lub config file lub env vars
+if len(sys.argv) >= 3:
+    EMAIL_ADDRESS  = sys.argv[1]
+    EMAIL_PASSWORD = sys.argv[2]
+    IMAP_SERVER    = sys.argv[3] if len(sys.argv) > 3 else "imap.wp.pl"
+    IMAP_PORT      = int(sys.argv[4]) if len(sys.argv) > 4 else 993
+    SINCE_DAYS     = int(sys.argv[5]) if len(sys.argv) > 5 else None
+else:
+    _config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "email_config.json")
+    if os.path.exists(_config_path):
+        with open(_config_path) as _f:
+            _cfg = json.load(_f)
+        EMAIL_ADDRESS  = _cfg.get("EMAIL_ADDRESS",  os.getenv("EMAIL_ADDRESS",  ""))
+        EMAIL_PASSWORD = _cfg.get("EMAIL_PASSWORD", os.getenv("EMAIL_PASSWORD", ""))
+        IMAP_SERVER    = _cfg.get("IMAP_SERVER",    os.getenv("IMAP_SERVER",    "imap.wp.pl"))
+        IMAP_PORT      = int(_cfg.get("IMAP_PORT",  os.getenv("IMAP_PORT",     "993")))
+    else:
+        EMAIL_ADDRESS  = os.getenv("EMAIL_ADDRESS",  "")
+        EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD", "")
+        IMAP_SERVER    = os.getenv("IMAP_SERVER",    "imap.wp.pl")
+        IMAP_PORT      = int(os.getenv("IMAP_PORT",  "993"))
+    SINCE_DAYS = None
 PAYMENT_SENDER = "oplaty@cui.wroclaw.pl"
 REQUIRED_NAME  = "Majchrowska-Ząb Iga"
 OUTPUT_FILE    = os.path.join(os.path.dirname(os.path.abspath(__file__)), "preschool_payment_messages.json")
@@ -131,7 +149,15 @@ def fetch_and_deduplicate():
         print("[INFO] Zalogowano.", file=sys.stderr)
         mail.select("INBOX")
 
-        status, data = mail.search(None, f'FROM "{PAYMENT_SENDER}"')
+        if SINCE_DAYS:
+            from datetime import datetime, timedelta
+            since_date = (datetime.now() - timedelta(days=SINCE_DAYS)).strftime("%d-%b-%Y")
+            search_criteria = f'FROM "{PAYMENT_SENDER}" SINCE {since_date}'
+            print(f"[INFO] Tryb przyrostowy — od {since_date}", file=sys.stderr)
+        else:
+            search_criteria = f'FROM "{PAYMENT_SENDER}"'
+
+        status, data = mail.search(None, search_criteria)
         if status != "OK":
             return []
 
