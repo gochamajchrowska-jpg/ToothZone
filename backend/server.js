@@ -45,7 +45,7 @@ function authenticateToken(req, res, next) {
   }
 }
 
-function runPythonScript(scriptName, timeoutMs = 60000) {
+function runPythonScript(scriptName, timeoutMs = 120000) {
   return new Promise((resolve, reject) => {
     const scriptPath = path.join(__dirname, scriptName);
     exec(`python3 "${scriptPath}"`, { timeout: timeoutMs }, (error, stdout, stderr) => {

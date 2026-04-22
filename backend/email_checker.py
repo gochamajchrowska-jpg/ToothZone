@@ -21,10 +21,20 @@ sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="repla
 sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
 
 # ── Konfiguracja ─────────────────────────────────────────────
-EMAIL_ADDRESS  = os.getenv("EMAIL_ADDRESS",  "")
-EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD", "")
-IMAP_SERVER    = os.getenv("IMAP_SERVER",    "imap.wp.pl")
-IMAP_PORT      = int(os.getenv("IMAP_PORT",  "993"))
+# Próbuj odczytać config z pliku (Railway) lub zmiennych środowiskowych (lokalnie)
+_config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "email_config.json")
+if os.path.exists(_config_path):
+    with open(_config_path) as _f:
+        _cfg = json.load(_f)
+    EMAIL_ADDRESS  = _cfg.get("EMAIL_ADDRESS",  os.getenv("EMAIL_ADDRESS",  ""))
+    EMAIL_PASSWORD = _cfg.get("EMAIL_PASSWORD", os.getenv("EMAIL_PASSWORD", ""))
+    IMAP_SERVER    = _cfg.get("IMAP_SERVER",    os.getenv("IMAP_SERVER",    "imap.wp.pl"))
+    IMAP_PORT      = int(_cfg.get("IMAP_PORT",  os.getenv("IMAP_PORT",     "993")))
+else:
+    EMAIL_ADDRESS  = os.getenv("EMAIL_ADDRESS",  "")
+    EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD", "")
+    IMAP_SERVER    = os.getenv("IMAP_SERVER",    "imap.wp.pl")
+    IMAP_PORT      = int(os.getenv("IMAP_PORT",  "993"))
 
 VULCAN_SENDER = "noreply@vulcan.net.pl"
 OUTPUT_FILE   = os.path.join(os.path.dirname(__file__), "vulcan_messages.json")
@@ -130,6 +140,9 @@ def fetch_vulcan_emails():
 
         mail_ids = data[0].split()
         print(f"[INFO] Znaleziono {len(mail_ids)} wiadomości od Vulcan.", file=sys.stderr)
+
+        # Pobierz tylko ostatnie 150 wiadomości (najnowsze)
+        mail_ids = mail_ids[-150:]
 
         for mail_id in mail_ids:
             status, msg_data = mail.fetch(mail_id, "(RFC822)")
