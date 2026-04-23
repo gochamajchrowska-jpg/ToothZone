@@ -54,14 +54,20 @@ const MONTHS_PL = [
   "Lipiec","Sierpień","Wrzesień","Październik","Listopad","Grudzień"
 ];
 
-// ── Modal: dodaj zobowiązanie ─────────────────────────────────
-function AddObligationModal({ onClose, onSave }) {
-  const [name, setName]         = useState("");
-  const [kwota, setKwota]       = useState("");
-  const [termin, setTermin]     = useState(todayIso());
-  const [komentarz, setKomentarz] = useState("");
-  const [cyclic, setCyclic]     = useState(false);
-  const [cyclicUntil, setCyclicUntil] = useState("");
+// ── Modal: dodaj/edytuj zobowiązanie ─────────────────────────
+function AddObligationModal({ onClose, onSave, existing }) {
+  // Konwertuj "dd.mm.yyyy" → "yyyy-mm-dd" dla input[type=date]
+  function toIso(dateStr) {
+    if (!dateStr || dateStr === "—") return todayIso();
+    const [d, m, y] = dateStr.split(".");
+    return `${y}-${m}-${d}`;
+  }
+  const [name, setName]         = useState(existing?.name || "");
+  const [kwota, setKwota]       = useState(existing ? (existing.kwota || "").replace(" zł","") : "");
+  const [termin, setTermin]     = useState(existing ? toIso(existing.termin) : todayIso());
+  const [komentarz, setKomentarz] = useState(existing?.komentarz || "");
+  const [cyclic, setCyclic]     = useState(existing?.cyclic || false);
+  const [cyclicUntil, setCyclicUntil] = useState(existing?.cyclicUntil || "");
   const [error, setError]       = useState("");
 
   function handleSave() {
@@ -69,15 +75,15 @@ function AddObligationModal({ onClose, onSave }) {
     const amount = parseFloat(kwota.replace(",", "."));
     if (isNaN(amount) || amount <= 0) return setError("Podaj prawidłową kwotę.");
     onSave({
-      id:          `obl_${Date.now()}`,
+      id:          existing?.id || `obl_${Date.now()}`,
       name:        name.trim(),
       kwota:       amount.toFixed(2).replace(".", ",") + " zł",
       termin:      termin ? formatDate(termin) : "—",
       komentarz:   komentarz.trim(),
       cyclic,
       cyclicUntil: cyclic ? cyclicUntil : null,
-      source:      "manual",
-      addedAt:     todayIso(),
+      source:      existing?.source || "manual",
+      addedAt:     existing?.addedAt || todayIso(),
     });
     onClose();
   }
@@ -86,7 +92,7 @@ function AddObligationModal({ onClose, onSave }) {
     <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && onClose()}>
       <div className="modal-box">
         <div className="modal-header">
-          <h3 className="modal-title">➕ Dodaj zobowiązanie</h3>
+          <h3 className="modal-title">{existing ? "✏️ Edytuj zobowiązanie" : "➕ Dodaj zobowiązanie"}</h3>
           <button className="modal-close" onClick={onClose}>✕</button>
         </div>
         <div className="modal-body">
@@ -313,6 +319,7 @@ export default function ObligationsPage() {
 
   // ── Modals ────────────────────────────────────────────────
   const [showAddModal,      setShowAddModal]      = useState(false);
+  const [editManual,        setEditManual]         = useState(null);
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [editSchedule,      setEditSchedule]      = useState(null);
   const [viewSchedule,      setViewSchedule]      = useState(null);
@@ -442,7 +449,16 @@ export default function ObligationsPage() {
   }
 
   function handleSaveManual(obl) {
-    setManuals((prev) => [obl, ...prev]);
+    setManuals((prev) => {
+      const exists = prev.findIndex((m) => m.id === obl.id);
+      if (exists >= 0) {
+        const next = [...prev];
+        next[exists] = obl;
+        return next;
+      }
+      return [obl, ...prev];
+    });
+    setEditManual(null);
   }
 
   function handleDeleteManual(id) {
@@ -497,6 +513,13 @@ export default function ObligationsPage() {
       {showAddModal && (
         <AddObligationModal
           onClose={() => setShowAddModal(false)}
+          onSave={handleSaveManual}
+        />
+      )}
+      {editManual && (
+        <AddObligationModal
+          existing={editManual}
+          onClose={() => setEditManual(null)}
           onSave={handleSaveManual}
         />
       )}
@@ -584,7 +607,12 @@ export default function ObligationsPage() {
                       >
                         Zapłać
                       </button>
-                      {(pay.source === "manual") && (
+                      {pay.source === "manual" && (
+                        <button className="btn-view-schedule"
+                          onClick={() => setEditManual(manuals.find(m => m.id === pay.id))}
+                          title="Edytuj">✏️</button>
+                      )}
+                      {pay.source === "manual" && (
                         <button className="btn-delete" onClick={() => handleDeleteManual(pay.id)} title="Usuń">🗑</button>
                       )}
                     </td>

@@ -62,11 +62,17 @@ function getSchoolYear(miesiac) {
 }
 
 // ── Modal ręcznego dodawania płatności ───────────────────────
-function AddPaymentModal({ onClose, onSave }) {
-  const [miesiac, setMiesiac]     = useState("");
-  const [kwota, setKwota]         = useState("");
-  const [termin, setTermin]       = useState(todayIso());
-  const [komentarz, setKomentarz] = useState("");
+function AddPaymentModal({ onClose, onSave, existing }) {
+  function toIso(dateStr) {
+    if (!dateStr || dateStr === "—") return todayIso();
+    const parts = dateStr.split(".");
+    if (parts.length === 3) return `${parts[2]}-${parts[1]}-${parts[0]}`;
+    return todayIso();
+  }
+  const [miesiac, setMiesiac]     = useState(existing?.miesiac || "");
+  const [kwota, setKwota]         = useState(existing ? (existing.kwota || "").replace(" zł","") : "");
+  const [termin, setTermin]       = useState(existing ? toIso(existing.termin) : todayIso());
+  const [komentarz, setKomentarz] = useState(existing?.komentarz || "");
   const [error, setError]         = useState("");
 
   function handleSave() {
@@ -75,7 +81,7 @@ function AddPaymentModal({ onClose, onSave }) {
     const kwotaNum = parseFloat(kwota.replace(",", "."));
     if (isNaN(kwotaNum) || kwotaNum <= 0) return setError("Podaj prawidłową kwotę.");
     onSave({
-      id:        `manual_${Date.now()}`,
+      id:        existing?.id || `manual_${Date.now()}`,
       miesiac:   miesiac.trim(),
       kwota:     kwotaNum.toFixed(2).replace(".", ",") + " zł",
       termin:    termin ? formatDate(termin) : "—",
@@ -89,7 +95,7 @@ function AddPaymentModal({ onClose, onSave }) {
     <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && onClose()}>
       <div className="modal-box modal-box--preschool">
         <div className="modal-header">
-          <h3 className="modal-title">💳 Dodaj płatność</h3>
+          <h3 className="modal-title">{existing ? "✏️ Edytuj płatność" : "💳 Dodaj płatność"}</h3>
           <button className="modal-close" onClick={onClose}>✕</button>
         </div>
         <div className="modal-body">
@@ -211,13 +217,23 @@ export default function PreschoolPage() {
     catch { return []; }
   });
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [editPayment, setEditPayment]         = useState(null);
 
   useEffect(() => {
     localStorage.setItem(MANUAL_PAYMENTS_KEY, JSON.stringify(manualPayments));
   }, [manualPayments]);
 
   function handleSaveManualPayment(payment) {
-    setManualPayments((prev) => [payment, ...prev]);
+    setManualPayments((prev) => {
+      const exists = prev.findIndex((p) => p.id === payment.id);
+      if (exists >= 0) {
+        const next = [...prev];
+        next[exists] = payment;
+        return next;
+      }
+      return [payment, ...prev];
+    });
+    setEditPayment(null);
   }
 
   function handleDeleteManualPayment(id) {
@@ -320,6 +336,13 @@ export default function PreschoolPage() {
       {showPaymentModal && (
         <AddPaymentModal onClose={() => setShowPaymentModal(false)} onSave={handleSaveManualPayment} />
       )}
+      {editPayment && (
+        <AddPaymentModal
+          existing={editPayment}
+          onClose={() => setEditPayment(null)}
+          onSave={handleSaveManualPayment}
+        />
+      )}
 
       {/* ── Baner nagłówkowy ── */}
       <section className="subpage-hero subpage-hero--preschool">
@@ -418,6 +441,11 @@ export default function PreschoolPage() {
                             >
                               {status === "paid" ? "Cofnij" : "Zapłać"}
                             </button>
+                            {pay.manual && (
+                              <button className="btn-view-schedule"
+                                onClick={() => setEditPayment(manualPayments.find(p => p.id === pay.id))}
+                                title="Edytuj">✏️</button>
+                            )}
                             {pay.manual && (
                               <button className="btn-delete" onClick={() => handleDeleteManualPayment(pay.id)} title="Usuń">🗑</button>
                             )}
