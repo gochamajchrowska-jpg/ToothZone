@@ -218,7 +218,6 @@ export default function PreschoolPage() {
 
   function handleSaveManualPayment(payment) {
     setManualPayments((prev) => [payment, ...prev]);
-    setPaidIds((prev) => { const next = new Set(prev); next.add(payment.id); return next; });
   }
 
   function handleDeleteManualPayment(id) {
@@ -402,7 +401,6 @@ export default function PreschoolPage() {
                         }>
                           <td className="pay-month">
                             {pay.miesiac}
-                            {pay.manual && <span className="pay-manual-badge">ręczna</span>}
                             {pay.komentarz && <div className="pay-komentarz">{pay.komentarz}</div>}
                           </td>
                           <td className="pay-amount">{pay.kwota}</td>
@@ -413,16 +411,15 @@ export default function PreschoolPage() {
                                status === "overdue" ? "Po terminie" :
                                status === "ok"      ? "W terminie"  : "—"}
                             </span>
-                            {pay.manual ? (
+                            <button
+                              className={`btn-mark-paid btn-mark-paid--preschool ${status === "paid" ? "btn-mark-paid--undo" : ""}`}
+                              onClick={() => togglePaid(pay.id)}
+                              title={status === "paid" ? "Cofnij oznaczenie" : "Oznacz jako zapłaconą"}
+                            >
+                              {status === "paid" ? "Cofnij" : "Zapłać"}
+                            </button>
+                            {pay.manual && (
                               <button className="btn-delete" onClick={() => handleDeleteManualPayment(pay.id)} title="Usuń">🗑</button>
-                            ) : (
-                              <button
-                                className={`btn-mark-paid btn-mark-paid--preschool ${status === "paid" ? "btn-mark-paid--undo" : ""}`}
-                                onClick={() => togglePaid(pay.id)}
-                                title={status === "paid" ? "Cofnij oznaczenie" : "Oznacz jako zapłaconą"}
-                              >
-                                {status === "paid" ? "Cofnij" : "Zapłać"}
-                              </button>
                             )}
                           </td>
                         </tr>
