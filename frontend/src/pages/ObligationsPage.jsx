@@ -381,35 +381,35 @@ export default function ObligationsPage() {
   }, [manuals, schedules]);
 
   // ── Połącz wszystkie płatności ────────────────────────────
-  // Ręczne płatności z zakładek szkoła i przedszkole (localStorage)
-  const schoolManual    = useMemo(() => {
-    try { return JSON.parse(localStorage.getItem("tz_school_manual_payments") || "[]"); }
-    catch { return []; }
-  }, []);
-  const preschoolManual = useMemo(() => {
-    try { return JSON.parse(localStorage.getItem("tz_preschool_manual_payments") || "[]"); }
-    catch { return []; }
-  }, []);
-
   const allPayments = useMemo(() => {
+    // Odczytaj ręczne płatności świeżo (paidVersion zapewnia aktualność)
+    const schoolManual    = (() => {
+      try { return JSON.parse(localStorage.getItem("tz_school_manual_payments") || "[]"); }
+      catch { return []; }
+    })();
+    const preschoolManual = (() => {
+      try { return JSON.parse(localStorage.getItem("tz_preschool_manual_payments") || "[]"); }
+      catch { return []; }
+    })();
+
     const fromSchool = schoolPay.map((p) => ({
       ...p, source: "school", name: `Szkoła — ${p.miesiac}`,
     }));
     const fromPreschool = preschoolPay.map((p) => ({
       ...p, source: "preschool", name: `Przedszkole — ${p.miesiac}`,
     }));
-    // Ręczne z zakładki Szkoła
+    // Ręczne z zakładki Szkoła — zachowaj manual:true żeby ominąć filtr dat
     const fromSchoolManual = schoolManual.map((p) => ({
-      ...p, source: "school", name: p.miesiac || p.name || "Szkoła",
+      ...p, source: "school", manual: true, name: p.miesiac || p.name || "Szkoła",
     }));
-    // Ręczne z zakładki Przedszkole
+    // Ręczne z zakładki Przedszkole — zachowaj manual:true
     const fromPreschoolManual = preschoolManual.map((p) => ({
-      ...p, source: "preschool", name: p.miesiac || p.name || "Przedszkole",
+      ...p, source: "preschool", manual: true, name: p.miesiac || p.name || "Przedszkole",
     }));
-    // Ręczne z tej zakładki
+    // Ręczne z zakładki Zobowiązania
     const fromManual = manuals.filter((m) => !m.cyclic).map((m) => ({
       id: m.id, name: m.name, kwota: m.kwota, termin: m.termin,
-      komentarz: m.komentarz, source: "manual",
+      komentarz: m.komentarz, source: "manual", manual: true,
     }));
 
     return [
@@ -417,7 +417,7 @@ export default function ObligationsPage() {
       ...fromPreschool, ...fromPreschoolManual,
       ...fromManual, ...generatedEntries
     ];
-  }, [schoolPay, preschoolPay, schoolManual, preschoolManual, manuals, generatedEntries]);
+  }, [schoolPay, preschoolPay, manuals, generatedEntries, paidVersion]);
 
   // ── Filtruj niezapłacone ─────────────────────────────────────
   // Dla płatności ze szkoły/przedszkola stosujemy dwa kryteria:
