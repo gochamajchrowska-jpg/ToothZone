@@ -4,39 +4,18 @@
 //  + ręczne jednorazowe i cykliczne zobowiązania
 // ============================================================
 
-import React, { useEffect, useState, useMemo, useCallback } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { useAuth } from "../App";
 import { getSchoolPayments, getPreschoolPayments } from "../api";
+import { parseDate, formatDate, toIsoDate, todayIso, isOverdue } from "../utils/dates";
+import { parseAmount } from "../utils/payments";
+import { useLocalStorage } from "../hooks/useLocalStorage";
+import { STORAGE_KEYS } from "../utils/storage";
 import "../styles/obligations.css";
 
-// ── localStorage keys ────────────────────────────────────────
-const OBL_MANUAL_KEY   = "tz_obligations_manual";    // ręczne zobowiązania
-const OBL_SCHEDULE_KEY = "tz_obligations_schedule";  // harmonogramy
-const OBL_PAID_KEY     = "tz_paid_payments";          // zapłacone (wspólne)
-const OBL_PRE_PAID_KEY = "tz_preschool_paid_payments";
+const OBL_PAID_KEY     = STORAGE_KEYS.schoolPaid;
+const OBL_PRE_PAID_KEY = STORAGE_KEYS.preschoolPaid;
 
-// ── Pomocniki dat ─────────────────────────────────────────────
-function todayIso() {
-  return new Date().toISOString().split("T")[0];
-}
-function formatDate(iso) {
-  if (!iso) return "—";
-  const [y, m, d] = iso.split("-");
-  return `${d}.${m}.${y}`;
-}
-function parseDate(str) {
-  if (!str || str === "—") return new Date(0);
-  const [d, m, y] = str.split(".");
-  return new Date(`${y}-${m}-${d}T00:00`);
-}
-function isOverdue(terminStr) {
-  if (!terminStr || terminStr === "—") return false;
-  return parseDate(terminStr) < new Date();
-}
-function firstDayThisMonth() {
-  const n = new Date();
-  return new Date(n.getFullYear(), n.getMonth(), 1);
-}
 function addMonths(date, n) {
   const d = new Date(date);
   d.setMonth(d.getMonth() + n);
@@ -44,9 +23,6 @@ function addMonths(date, n) {
 }
 function monthLabel(date) {
   return date.toLocaleDateString("pl-PL", { month: "long", year: "numeric" });
-}
-function isoDate(date) {
-  return date.toISOString().split("T")[0];
 }
 
 const MONTHS_PL = [
@@ -281,16 +257,10 @@ export default function ObligationsPage() {
   const [preschoolPay, setPreschoolPay] = useState([]);
 
   // ── Ręczne zobowiązania ───────────────────────────────────
-  const [manuals, setManuals] = useState(() => {
-    try { return JSON.parse(localStorage.getItem(OBL_MANUAL_KEY) || "[]"); }
-    catch { return []; }
-  });
+  const [manuals, setManuals] = useLocalStorage(STORAGE_KEYS.oblManual, []);
 
   // ── Harmonogramy ──────────────────────────────────────────
-  const [schedules, setSchedules] = useState(() => {
-    try { return JSON.parse(localStorage.getItem(OBL_SCHEDULE_KEY) || "[]"); }
-    catch { return []; }
-  });
+  const [schedules, setSchedules] = useLocalStorage(STORAGE_KEYS.oblSchedule, []);
 
   // ── Zapłacone IDs — odczytywane świeżo przy każdym renderze ──
   // Osobne zbiory dla szkoły i przedszkola (te same ID np. "marzec 2026")
@@ -315,12 +285,6 @@ export default function ObligationsPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [paidVersion]);
 
-  useEffect(() => {
-    localStorage.setItem(OBL_MANUAL_KEY,   JSON.stringify(manuals));
-  }, [manuals]);
-  useEffect(() => {
-    localStorage.setItem(OBL_SCHEDULE_KEY, JSON.stringify(schedules));
-  }, [schedules]);
 
 
   // ── Modals ────────────────────────────────────────────────
