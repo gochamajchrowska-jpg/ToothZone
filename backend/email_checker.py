@@ -13,7 +13,7 @@ import os
 import sys
 import re
 from email.header import decode_header
-from datetime import datetime
+from datetime import datetime, timedelta
 
 # Wymuś UTF-8 na stdout i stderr (naprawia polskie znaki w terminalu Windows)
 import io
