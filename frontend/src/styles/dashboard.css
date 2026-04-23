@@ -505,7 +505,7 @@
     left: 0;
     right: 0;
     top: auto;
-    z-index: 100;
+    z-index: 200; /* wyżej niż content, niżej niż modal (9999) */
     border-bottom: none;
     border-top: 1px solid var(--clr-border);
     padding: 0;
@@ -540,8 +540,11 @@
 
   /* Treść główna — padding-bottom żeby nie chować się pod tab bar */
   .app-main {
-    padding: 16px 16px calc(80px + env(safe-area-inset-bottom));
+    padding: 16px 16px calc(90px + env(safe-area-inset-bottom));
     gap: 20px;
+    /* Zapewnij że kliknięcia docierają do elementów pod tab barem */
+    position: relative;
+    z-index: 1;
   }
 
   /* Hero — mniejszy */

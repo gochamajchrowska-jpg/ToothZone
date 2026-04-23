@@ -917,29 +917,69 @@
     gap: 8px;
   }
 
-  /* Modalne — pełny ekran na mobile */
+  /* Modalne — pełny ekran na mobile, nad tab barem */
   .modal-backdrop {
-    align-items: flex-end; /* modal wysuwa się od dołu jak iOS sheet */
+    align-items: flex-end;
+    z-index: 9999; /* ponad dolną nawigacją (z-index: 100) */
+    padding: 0;
   }
   .modal-box {
     border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-    max-height: 90vh;
+    max-height: 85vh;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
-    padding-bottom: env(safe-area-inset-bottom);
+    padding-bottom: calc(16px + env(safe-area-inset-bottom));
     width: 100%;
     max-width: 100%;
+    animation: slideUpMobile 0.25s ease-out;
+  }
+  @keyframes slideUpMobile {
+    from { transform: translateY(100%); }
+    to   { transform: translateY(0); }
   }
   .modal-box--wide {
     max-width: 100%;
     border-radius: var(--radius-lg) var(--radius-lg) 0 0;
   }
+  .modal-footer {
+    position: sticky;
+    bottom: 0;
+    background: var(--clr-surface);
+    border-top: 1px solid var(--clr-border);
+    padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+  }
 
-  /* Inputy — większe dla palca */
+  /* Inputy — większe dla palca, brak auto-zoom iOS */
   .modal-field input,
   .modal-field textarea,
   .modal-field select {
-    font-size: 16px; /* zapobiega auto-zoom na iOS */
+    font-size: 16px !important;
     min-height: 44px;
+    padding: 10px 12px;
+  }
+
+  /* Przyciski akcji w tabeli — większy obszar dotyku */
+  .btn-mark-paid,
+  .btn-add,
+  .btn-refresh,
+  .btn-delete,
+  .btn-view-schedule {
+    min-height: 40px;
+    padding: 8px 14px;
+  }
+
+  /* Nagłówek sekcji — przyciski w rzędzie */
+  .messages-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+  .messages-header > div,
+  .messages-header > button {
+    width: 100%;
+  }
+  .btn-refresh {
+    width: 100%;
+    justify-content: center;
   }
 }

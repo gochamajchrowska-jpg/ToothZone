@@ -282,16 +282,29 @@
 @media (max-width: 640px) {
   .obl-header {
     flex-direction: column;
-    align-items: flex-start;
+    align-items: stretch;
+    gap: 8px;
   }
   .obl-header-actions {
     width: 100%;
+    display: flex;
+    gap: 8px;
   }
   .obl-header-actions button {
     flex: 1;
     justify-content: center;
+    min-height: 44px;
+    font-size: 0.85rem;
   }
-  .btn-schedule { font-size: 0.8rem; }
+  .btn-schedule {
+    font-size: 0.82rem;
+    min-height: 44px;
+  }
+  /* Upewnij się że przyciski są klikalnie nad tab barem */
+  .obl-actions {
+    position: relative;
+    z-index: 1;
+  }
 
   /* Tabela zobowiązań → karty */
   .obl-table thead { display: none; }
