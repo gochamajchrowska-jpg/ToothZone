@@ -1,9 +1,11 @@
 // ============================================================
 //  Dashboard.jsx — Panel główny
+//  Zakładki: Nadchodzące wydarzenia | Zobowiązania
 // ============================================================
 
-import React from "react";
+import React, { useState } from "react";
 import AppLayout from "../components/AppLayout";
+import ObligationsPage from "./ObligationsPage";
 
 const UPCOMING_EVENTS = [
   { id: 1, title: "Zebranie rodziców",           date: "25 kwietnia 2026", category: "school",    icon: "📚" },
@@ -16,9 +18,10 @@ const UPCOMING_EVENTS = [
 const CATEGORY_LABELS = { school: "Szkoła", preschool: "Przedszkole", other: "Inne" };
 
 export default function Dashboard() {
+  const [activeTab, setActiveTab] = useState("events");
+
   return (
     <AppLayout>
-
       <section className="dash-hero">
         <div className="dash-hero-badge">Panel główny</div>
         <h1 className="dash-welcome">Witaj w Tooth Zone 👋</h1>
@@ -27,24 +30,49 @@ export default function Dashboard() {
         </p>
       </section>
 
-      <section className="dash-section">
-        <h2 className="dash-section-title">📅 Nadchodzące wydarzenia</h2>
-        <div className="events-list">
-          {UPCOMING_EVENTS.map((event) => (
-            <div key={event.id} className={`event-card event-card--${event.category}`}>
-              <span className="event-icon">{event.icon}</span>
-              <div className="event-info">
-                <div className="event-title">{event.title}</div>
-                <div className="event-date">{event.date}</div>
-              </div>
-              <span className={`event-badge event-badge--${event.category}`}>
-                {CATEGORY_LABELS[event.category]}
-              </span>
-            </div>
-          ))}
-        </div>
-      </section>
+      {/* ── Zakładki ── */}
+      <div className="school-tabs" style={{marginBottom: "24px"}}>
+        <button
+          className={`school-tab ${activeTab === "events" ? "school-tab--active" : ""}`}
+          onClick={() => setActiveTab("events")}
+        >
+          📅 Nadchodzące wydarzenia
+        </button>
+        <button
+          className={`school-tab ${activeTab === "obligations" ? "school-tab--active" : ""}`}
+          onClick={() => setActiveTab("obligations")}
+        >
+          📋 Zobowiązania
+        </button>
+      </div>
 
+      {/* ── Zakładka: Wydarzenia ── */}
+      {activeTab === "events" && (
+        <section className="dash-section">
+          <h2 className="dash-section-title">📅 Nadchodzące wydarzenia</h2>
+          <div className="events-list">
+            {UPCOMING_EVENTS.map((event) => (
+              <div key={event.id} className={`event-card event-card--${event.category}`}>
+                <span className="event-icon">{event.icon}</span>
+                <div className="event-info">
+                  <div className="event-title">{event.title}</div>
+                  <div className="event-date">{event.date}</div>
+                </div>
+                <span className={`event-badge event-badge--${event.category}`}>
+                  {CATEGORY_LABELS[event.category]}
+                </span>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* ── Zakładka: Zobowiązania ── */}
+      {activeTab === "obligations" && (
+        <section className="dash-section">
+          <ObligationsPage />
+        </section>
+      )}
     </AppLayout>
   );
 }

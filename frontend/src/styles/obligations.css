@@ -1,0 +1,279 @@
+/* ============================================================
+   obligations.css — Style dla zakładki Zobowiązania
+============================================================ */
+
+/* ── Nagłówek ────────────────────────────────────────────── */
+.obl-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.obl-header-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.obl-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--clr-text);
+  margin: 0;
+}
+
+.obl-total {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--clr-error-text);
+  background: var(--clr-error-bg);
+  border: 1px solid var(--clr-error-border);
+  border-radius: 100px;
+  padding: 3px 12px;
+}
+
+.obl-header-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.btn-schedule {
+  padding: 0.45rem 1rem;
+  background: var(--clr-surface-2);
+  color: var(--clr-text);
+  border: 1.5px solid var(--clr-border);
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  font-weight: 600;
+  font-family: var(--font-body);
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.btn-schedule:hover {
+  background: var(--clr-primary-light);
+  border-color: var(--clr-primary);
+  color: var(--clr-primary-dark);
+}
+
+/* ── Tabela ────────────────────────────────────────────────── */
+.obl-table th:first-child  { min-width: 180px; }
+.obl-table th:last-child   { min-width: 100px; }
+
+.obl-name {
+  font-weight: 600;
+  color: var(--clr-text);
+  margin-bottom: 3px;
+}
+
+.obl-actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  white-space: nowrap;
+}
+
+/* ── Źródło badge ────────────────────────────────────────── */
+.obl-badge {
+  display: inline-block;
+  font-size: 0.68rem;
+  font-weight: 600;
+  border-radius: 100px;
+  padding: 1px 7px;
+  margin-top: 4px;
+  border: 1px solid transparent;
+}
+
+.obl-badge--school {
+  background: #e8f0fe;
+  color: #1a56db;
+  border-color: #c3d5fd;
+}
+.obl-badge--preschool {
+  background: var(--clr-preschool-bg, #fff3e0);
+  color: #a06010;
+  border-color: #f0c87a;
+}
+.obl-badge--cyclic {
+  background: #e8f5e9;
+  color: #2e7d32;
+  border-color: #a5d6a7;
+}
+.obl-badge--schedule {
+  background: #f3e5f5;
+  color: #6a1b9a;
+  border-color: #ce93d8;
+}
+.obl-badge--manual {
+  background: var(--clr-surface-2);
+  color: var(--clr-text-muted);
+  border-color: var(--clr-border);
+}
+
+/* ── Harmonogramy ────────────────────────────────────────── */
+.obl-schedules {
+  margin-top: 32px;
+}
+
+.obl-schedules-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--clr-text);
+  margin-bottom: 12px;
+}
+
+.obl-schedules-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.obl-schedule-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: var(--clr-surface);
+  border: 1.5px solid var(--clr-border);
+  border-radius: var(--radius-md);
+  padding: 12px 16px;
+  flex-wrap: wrap;
+}
+
+.obl-schedule-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.obl-schedule-name {
+  font-weight: 600;
+  color: var(--clr-text);
+  font-size: 0.9rem;
+}
+
+.obl-schedule-count {
+  font-size: 0.75rem;
+  color: var(--clr-text-muted);
+  background: var(--clr-surface-2);
+  border-radius: 100px;
+  padding: 2px 8px;
+}
+
+.obl-schedule-btns {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.btn-view-schedule {
+  padding: 4px 12px;
+  background: var(--clr-surface-2);
+  color: var(--clr-text);
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius-sm);
+  font-size: 0.8rem;
+  font-weight: 600;
+  font-family: var(--font-body);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.btn-view-schedule:hover {
+  background: var(--clr-primary-light);
+  border-color: var(--clr-primary);
+  color: var(--clr-primary-dark);
+}
+
+/* ── Modal harmonogram ───────────────────────────────────── */
+.modal-box--wide {
+  max-width: 680px;
+  width: 95%;
+}
+
+.schedule-hint {
+  font-size: 0.82rem;
+  color: var(--clr-text-muted);
+  margin: 0 0 14px;
+}
+
+.schedule-grid {
+  border: 1.5px solid var(--clr-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.schedule-grid-header {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--clr-surface-2);
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--clr-text-muted);
+  border-bottom: 1px solid var(--clr-border);
+}
+
+.schedule-grid-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+  padding: 6px 12px;
+  align-items: center;
+  border-bottom: 1px solid var(--clr-border);
+}
+.schedule-grid-row:last-child { border-bottom: none; }
+.schedule-grid-row:nth-child(even) { background: var(--clr-surface); }
+
+.schedule-grid-row input {
+  padding: 4px 8px;
+  font-size: 0.82rem;
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius-sm);
+  background: var(--clr-bg);
+  color: var(--clr-text);
+  font-family: var(--font-body);
+  width: 100%;
+  box-sizing: border-box;
+}
+.schedule-grid-row input:focus {
+  outline: none;
+  border-color: var(--clr-primary);
+}
+
+.schedule-month {
+  font-size: 0.82rem;
+  color: var(--clr-text);
+  font-weight: 500;
+}
+
+.schedule-grid-row--view span {
+  font-size: 0.82rem;
+  color: var(--clr-text);
+}
+
+/* ── Checkbox ────────────────────────────────────────────── */
+.modal-field--checkbox {
+  margin-top: 4px;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.88rem;
+  color: var(--clr-text);
+  cursor: pointer;
+}
+
+.checkbox-label input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: var(--clr-primary);
+}
