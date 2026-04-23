@@ -413,25 +413,45 @@ export default function ObligationsPage() {
     ];
   }, [schoolPay, preschoolPay, schoolManual, preschoolManual, manuals, generatedEntries]);
 
-  // ── Filtruj tylko niezapłacone — max 2 miesiące wstecz ──────
-  // Płatności starsze niż 2 miesiące traktujemy jako historyczne i pomijamy
-  // (nie wiadomo czy zapłacone na innym urządzeniu)
+  // ── Filtruj niezapłacone ─────────────────────────────────────
   const unpaid = useMemo(() => {
-    const cutoff = new Date();
-    cutoff.setMonth(cutoff.getMonth() - 2);
-    cutoff.setDate(1);
-    cutoff.setHours(0, 0, 0, 0);
+    const now = new Date();
+    // Cutoff = 1. dzień miesiąca sprzed 2 miesięcy
+    const cutoff = new Date(now.getFullYear(), now.getMonth() - 2, 1);
+
+    // Mapa znormalizowanych miesięcy → rok/miesiąc dla porównania
+    function monthKeyFromId(id) {
+      // id np. "kwiecien 2026" → "2026-04"
+      const MONTHS = {
+        "styczen":1,"luty":2,"marzec":3,"kwiecien":4,"maj":5,"czerwiec":6,
+        "lipiec":7,"sierpien":8,"wrzesien":9,"pazdziernik":10,"listopad":11,"grudzien":12
+      };
+      if (!id) return null;
+      const parts = id.toLowerCase().split(" ");
+      if (parts.length < 2) return null;
+      const m = MONTHS[parts[0]];
+      const y = parseInt(parts[1]);
+      if (!m || !y) return null;
+      return new Date(y, m - 1, 1);
+    }
 
     return allPayments.filter((p) => {
-      // Pomiń jeśli zapłacona
+      // 1. Pomiń jeśli zapłacona (osobne zbiory dla szkoły i przedszkola)
       if (p.source === "school"    && (schoolPaidIds.has(p.id)    || oblPaidIds.has(p.id))) return false;
       if (p.source === "preschool" && (preschoolPaidIds.has(p.id) || oblPaidIds.has(p.id))) return false;
       if (p.source !== "school" && p.source !== "preschool" && oblPaidIds.has(p.id)) return false;
 
-      // Pomiń historyczne (starsze niż 2 miesiące) — chyba że ręcznie dodane
+      // 2. Dla płatności ze szkoły/przedszkola — ukryj starsze niż 2 miesiące
       if (p.source === "school" || p.source === "preschool") {
-        const termDate = parseDate(p.termin);
-        if (termDate < cutoff) return false;
+        // Użyj ID (znormalizowany miesiąc) do określenia daty
+        const monthDate = monthKeyFromId(p.id);
+        if (monthDate && monthDate < cutoff) return false;
+
+        // Fallback: użyj terminu płatności
+        if (!monthDate && p.termin && p.termin !== "—") {
+          const termDate = parseDate(p.termin);
+          if (termDate.getTime() > 0 && termDate < cutoff) return false;
+        }
       }
 
       return true;
