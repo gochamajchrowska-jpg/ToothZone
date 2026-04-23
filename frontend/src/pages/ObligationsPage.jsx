@@ -437,8 +437,8 @@ export default function ObligationsPage() {
       if (p.source !== "school" && p.source !== "preschool" && oblPaidIds.has(p.id)) return false;
 
       // ── Krok 2: dla szkoły/przedszkola — ukryj stare faktury ──
-      // Używamy terminu płatności jako wyznacznika "czy aktualna"
-      if (p.source === "school" || p.source === "preschool") {
+      // Ręcznie dodane zawsze pokazuj (manual: true)
+      if ((p.source === "school" || p.source === "preschool") && !p.manual) {
         const term = parseDate(p.termin);
         // Jeśli termin jest znany i starszy niż 3 miesiące → ukryj
         if (term.getTime() > 0 && term < termCutoff) return false;
