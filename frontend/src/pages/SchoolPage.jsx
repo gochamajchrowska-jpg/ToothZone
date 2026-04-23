@@ -12,10 +12,11 @@ import {
 } from "../api";
 import "../styles/school.css";
 
-const PAGE_SIZE           = 10;
-const PAY_PAGE_SIZE       = 6;   // płatności: 6 miesięcy na stronę
-const EVENTS_STORAGE_KEY  = "tz_school_events";
-const PAID_STORAGE_KEY    = "tz_paid_payments";
+const PAGE_SIZE              = 10;
+const PAY_PAGE_SIZE          = 6;
+const EVENTS_STORAGE_KEY     = "tz_school_events";
+const PAID_STORAGE_KEY       = "tz_paid_payments";
+const MANUAL_PAYMENTS_KEY    = "tz_school_manual_payments"; // ręczne płatności
 
 // ── Pomocniki dat ────────────────────────────────────────────
 function parseDate(dateStr) {
@@ -81,6 +82,72 @@ function getSchoolYear(miesiac) {
   } else {
     return `${year - 1}/${year}`;
   }
+}
+
+// ── Modal ręcznego dodawania płatności ───────────────────────
+function AddPaymentModal({ onClose, onSave }) {
+  const [miesiac, setMiesiac]   = useState("");
+  const [kwota, setKwota]       = useState("");
+  const [termin, setTermin]     = useState(todayIso());
+  const [komentarz, setKomentarz] = useState("");
+  const [error, setError]       = useState("");
+
+  function handleSave() {
+    if (!miesiac.trim()) return setError("Wpisz nazwę miesiąca (np. maj 2026).");
+    if (!kwota.trim())   return setError("Wpisz kwotę.");
+    const kwotaNum = parseFloat(kwota.replace(",", "."));
+    if (isNaN(kwotaNum) || kwotaNum <= 0) return setError("Podaj prawidłową kwotę.");
+    onSave({
+      id:        `manual_${Date.now()}`,
+      miesiac:   miesiac.trim(),
+      kwota:     kwotaNum.toFixed(2).replace(".", ",") + " zł",
+      termin:    termin ? formatDate(termin) : "—",
+      komentarz: komentarz.trim(),
+      manual:    true,
+    });
+    onClose();
+  }
+
+  return (
+    <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="modal-box">
+        <div className="modal-header">
+          <h3 className="modal-title">💳 Dodaj płatność</h3>
+          <button className="modal-close" onClick={onClose}>✕</button>
+        </div>
+        <div className="modal-body">
+          <div className="modal-field">
+            <label htmlFor="pay-miesiac">Miesiąc</label>
+            <input id="pay-miesiac" type="text" placeholder="np. maj 2026"
+              value={miesiac} onChange={(e) => setMiesiac(e.target.value)} autoFocus />
+          </div>
+          <div className="modal-field">
+            <label htmlFor="pay-kwota">Kwota (zł)</label>
+            <input id="pay-kwota" type="text" placeholder="np. 151,05"
+              value={kwota} onChange={(e) => setKwota(e.target.value)} />
+          </div>
+          <div className="modal-field">
+            <label htmlFor="pay-termin">Termin płatności</label>
+            <input id="pay-termin" type="date" value={termin}
+              onChange={(e) => setTermin(e.target.value)} min="2020-01-01" max="2030-12-31" />
+          </div>
+          <div className="modal-field">
+            <label htmlFor="pay-komentarz">
+              Komentarz <span className="char-count">{komentarz.length}/200</span>
+            </label>
+            <textarea id="pay-komentarz" rows={2} maxLength={200}
+              placeholder="Opcjonalny opis płatności"
+              value={komentarz} onChange={(e) => setKomentarz(e.target.value)} />
+          </div>
+          {error && <p className="modal-error">⚠️ {error}</p>}
+        </div>
+        <div className="modal-footer">
+          <button className="btn-cancel" onClick={onClose}>Anuluj</button>
+          <button className="btn-save" onClick={handleSave}>Zapisz</button>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 // ── Modal dodawania wydarzenia ────────────────────────────────
@@ -170,6 +237,29 @@ export default function SchoolPage() {
     });
   }
 
+  // ── Ręczne płatności — trwałe w localStorage ─────────────
+  const [manualPayments, setManualPayments] = useState(() => {
+    try { return JSON.parse(localStorage.getItem(MANUAL_PAYMENTS_KEY) || "[]"); }
+    catch { return []; }
+  });
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+
+  useEffect(() => {
+    localStorage.setItem(MANUAL_PAYMENTS_KEY, JSON.stringify(manualPayments));
+  }, [manualPayments]);
+
+  function handleSaveManualPayment(payment) {
+    setManualPayments((prev) => [payment, ...prev]);
+    // Automatycznie oznacz jako zapłacona
+    setPaidIds((prev) => { const next = new Set(prev); next.add(payment.id); return next; });
+  }
+
+  function handleDeleteManualPayment(id) {
+    if (!window.confirm("Usunąć tę płatność?")) return;
+    setManualPayments((prev) => prev.filter((p) => p.id !== id));
+    setPaidIds((prev) => { const next = new Set(prev); next.delete(id); return next; });
+  }
+
   // ── Własne wydarzenia ─────────────────────────────────────
   const [events, setEvents] = useState(() => {
     try { return JSON.parse(localStorage.getItem(EVENTS_STORAGE_KEY) || "[]"); }
@@ -233,11 +323,11 @@ export default function SchoolPage() {
     return pages;
   }
 
-  // ── Płatności: sortowanie od najnowszych ─────────────────
-  const sortedPayments = useMemo(() => [...payments].sort((a, b) => {
-    // Sortuj po terminie malejąco (najnowszy miesiąc pierwszy)
-    return parseDate(b.termin) - parseDate(a.termin);
-  }), [payments]);
+  // ── Płatności: połącz z ręcznymi i sortuj ───────────────────
+  const sortedPayments = useMemo(() => {
+    const all = [...payments, ...manualPayments];
+    return all.sort((a, b) => parseDate(b.termin) - parseDate(a.termin));
+  }, [payments, manualPayments]);
 
   // Stronicowanie płatności (6 na stronę = 6 ostatnich miesięcy)
   const totalPayPages   = Math.ceil(sortedPayments.length / PAY_PAGE_SIZE);
@@ -299,6 +389,9 @@ export default function SchoolPage() {
 
       {showModal && (
         <AddEventModal onClose={() => setShowModal(false)} onSave={handleSaveEvent} />
+      )}
+      {showPaymentModal && (
+        <AddPaymentModal onClose={() => setShowPaymentModal(false)} onSave={handleSaveManualPayment} />
       )}
 
       {/* ── Baner nagłówkowy ── */}
@@ -407,7 +500,7 @@ export default function SchoolPage() {
       {activeTab === "payments" && (
         <section className="dash-section">
           <div className="messages-header">
-            <h2 className="dash-section-title">
+            <h2 className="dash-section-title" style={{display:"flex", alignItems:"center", gap:"10px", flexWrap:"wrap"}}>
               💳 Płatności — Marcelina
               {/* Suma roku szkolnego w nawiasie przy nagłówku */}
               {currentSchoolYear && currentYearTotal !== null && (
@@ -416,9 +509,12 @@ export default function SchoolPage() {
                 </span>
               )}
             </h2>
-            <button className="btn-refresh" onClick={handleRefreshPayments} disabled={payRefreshing}>
-              {payRefreshing ? "⏳ Sprawdzam..." : "🔄 Odśwież"}
-            </button>
+            <div style={{display:"flex", gap:"8px"}}>
+              <button className="btn-add" onClick={() => setShowPaymentModal(true)}>+ Dodaj</button>
+              <button className="btn-refresh" onClick={handleRefreshPayments} disabled={payRefreshing}>
+                {payRefreshing ? "⏳ Sprawdzam..." : "🔄 Odśwież"}
+              </button>
+            </div>
           </div>
 
           {payError && <div className="vulcan-error-banner">⚠️ {payError}</div>}
@@ -449,7 +545,11 @@ export default function SchoolPage() {
                           status === "paid"    ? "row-paid" :
                           status === "overdue" ? "row-overdue" : ""
                         }>
-                          <td className="pay-month">{pay.miesiac}</td>
+                          <td className="pay-month">
+                            {pay.miesiac}
+                            {pay.manual && <span className="pay-manual-badge">ręczna</span>}
+                            {pay.komentarz && <div className="pay-komentarz">{pay.komentarz}</div>}
+                          </td>
                           <td className="pay-amount">{pay.kwota}</td>
                           <td className="pay-deadline">{pay.termin}</td>
                           <td className="pay-status-cell">
@@ -458,13 +558,17 @@ export default function SchoolPage() {
                                status === "overdue" ? "Po terminie" :
                                status === "ok"      ? "W terminie"  : "—"}
                             </span>
-                            <button
-                              className={`btn-mark-paid ${status === "paid" ? "btn-mark-paid--undo" : ""}`}
-                              onClick={() => togglePaid(pay.id)}
-                              title={status === "paid" ? "Cofnij oznaczenie" : "Oznacz jako zapłaconą"}
-                            >
-                              {status === "paid" ? "Cofnij" : "Zapłać"}
-                            </button>
+                            {pay.manual ? (
+                              <button className="btn-delete" onClick={() => handleDeleteManualPayment(pay.id)} title="Usuń">🗑</button>
+                            ) : (
+                              <button
+                                className={`btn-mark-paid ${status === "paid" ? "btn-mark-paid--undo" : ""}`}
+                                onClick={() => togglePaid(pay.id)}
+                                title={status === "paid" ? "Cofnij oznaczenie" : "Oznacz jako zapłaconą"}
+                              >
+                                {status === "paid" ? "Cofnij" : "Zapłać"}
+                              </button>
+                            )}
                           </td>
                         </tr>
                       );
