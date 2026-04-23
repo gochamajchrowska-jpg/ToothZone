@@ -286,13 +286,15 @@ export default function ObligationsPage() {
     catch { return []; }
   });
 
-  // ── Zapłacone IDs — ze wszystkich źródeł ─────────────────
-  const [paidIds, setPaidIds] = useState(() => {
-    try {
-      const school     = JSON.parse(localStorage.getItem(OBL_PAID_KEY)       || "[]");
-      const preschool  = JSON.parse(localStorage.getItem(OBL_PRE_PAID_KEY)   || "[]");
-      return new Set([...school, ...preschool]);
-    } catch { return new Set(); }
+  // ── Zapłacone IDs — osobno dla szkoły i przedszkola ─────────
+  // WAŻNE: nie łączymy w jeden zbiór bo ID są takie same (np. "marzec 2026")
+  const [schoolPaidIds, setSchoolPaidIds] = useState(() => {
+    try { return new Set(JSON.parse(localStorage.getItem(OBL_PAID_KEY) || "[]")); }
+    catch { return new Set(); }
+  });
+  const [preschoolPaidIds, setPreschoolPaidIds] = useState(() => {
+    try { return new Set(JSON.parse(localStorage.getItem(OBL_PRE_PAID_KEY) || "[]")); }
+    catch { return new Set(); }
   });
   const [oblPaidIds, setOblPaidIds] = useState(() => {
     try { return new Set(JSON.parse(localStorage.getItem("tz_obl_paid") || "[]")); }
@@ -407,29 +409,36 @@ export default function ObligationsPage() {
   // ── Filtruj tylko niezapłacone / po terminie ──────────────
   const unpaid = useMemo(() => {
     return allPayments.filter((p) => {
-      const paid = paidIds.has(p.id) || oblPaidIds.has(p.id);
-      return !paid;
+      // Sprawdź właściwy zbiór zapłaconych zależnie od źródła
+      if (p.source === "school")    return !schoolPaidIds.has(p.id) && !oblPaidIds.has(p.id);
+      if (p.source === "preschool") return !preschoolPaidIds.has(p.id) && !oblPaidIds.has(p.id);
+      return !oblPaidIds.has(p.id);
     }).sort((a, b) => parseDate(a.termin) - parseDate(b.termin));
-  }, [allPayments, paidIds, oblPaidIds]);
+  }, [allPayments, schoolPaidIds, preschoolPaidIds, oblPaidIds]);
 
   function togglePaid(id, source) {
-    setOblPaidIds((prev) => {
-      const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
-      return next;
-    });
-    setPaidIds((prev) => {
-      const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
-      return next;
-    });
-    // Aktualizuj właściwy klucz localStorage żeby inne zakładki widziały zmianę
-    const key = (source === "preschool") ? OBL_PRE_PAID_KEY : OBL_PAID_KEY;
-    try {
-      const current = new Set(JSON.parse(localStorage.getItem(key) || "[]"));
-      if (current.has(id)) { current.delete(id); } else { current.add(id); }
-      localStorage.setItem(key, JSON.stringify([...current]));
-    } catch {}
+    if (source === "school") {
+      setSchoolPaidIds((prev) => {
+        const next = new Set(prev);
+        next.has(id) ? next.delete(id) : next.add(id);
+        localStorage.setItem(OBL_PAID_KEY, JSON.stringify([...next]));
+        return next;
+      });
+    } else if (source === "preschool") {
+      setPreschoolPaidIds((prev) => {
+        const next = new Set(prev);
+        next.has(id) ? next.delete(id) : next.add(id);
+        localStorage.setItem(OBL_PRE_PAID_KEY, JSON.stringify([...next]));
+        return next;
+      });
+    } else {
+      setOblPaidIds((prev) => {
+        const next = new Set(prev);
+        next.has(id) ? next.delete(id) : next.add(id);
+        localStorage.setItem("tz_obl_paid", JSON.stringify([...next]));
+        return next;
+      });
+    }
   }
 
   function handleSaveManual(obl) {
