@@ -413,13 +413,28 @@ export default function ObligationsPage() {
     ];
   }, [schoolPay, preschoolPay, schoolManual, preschoolManual, manuals, generatedEntries]);
 
-  // ── Filtruj tylko niezapłacone / po terminie ──────────────
+  // ── Filtruj tylko niezapłacone — max 2 miesiące wstecz ──────
+  // Płatności starsze niż 2 miesiące traktujemy jako historyczne i pomijamy
+  // (nie wiadomo czy zapłacone na innym urządzeniu)
   const unpaid = useMemo(() => {
+    const cutoff = new Date();
+    cutoff.setMonth(cutoff.getMonth() - 2);
+    cutoff.setDate(1);
+    cutoff.setHours(0, 0, 0, 0);
+
     return allPayments.filter((p) => {
-      // Sprawdź właściwy zbiór zapłaconych zależnie od źródła
-      if (p.source === "school")    return !schoolPaidIds.has(p.id) && !oblPaidIds.has(p.id);
-      if (p.source === "preschool") return !preschoolPaidIds.has(p.id) && !oblPaidIds.has(p.id);
-      return !oblPaidIds.has(p.id);
+      // Pomiń jeśli zapłacona
+      if (p.source === "school"    && (schoolPaidIds.has(p.id)    || oblPaidIds.has(p.id))) return false;
+      if (p.source === "preschool" && (preschoolPaidIds.has(p.id) || oblPaidIds.has(p.id))) return false;
+      if (p.source !== "school" && p.source !== "preschool" && oblPaidIds.has(p.id)) return false;
+
+      // Pomiń historyczne (starsze niż 2 miesiące) — chyba że ręcznie dodane
+      if (p.source === "school" || p.source === "preschool") {
+        const termDate = parseDate(p.termin);
+        if (termDate < cutoff) return false;
+      }
+
+      return true;
     }).sort((a, b) => parseDate(a.termin) - parseDate(b.termin));
   }, [allPayments, schoolPaidIds, preschoolPaidIds, oblPaidIds]);
 
