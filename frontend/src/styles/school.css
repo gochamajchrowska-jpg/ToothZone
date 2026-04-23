@@ -767,3 +767,179 @@
   margin-top: 3px;
   font-style: italic;
 }
+
+/* ============================================================
+   MOBILE — szkoła i przedszkole
+   ============================================================ */
+@media (max-width: 640px) {
+
+  /* Zakładki — poziome przewijanie */
+  .school-tabs {
+    gap: 4px;
+    padding: 3px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .school-tabs::-webkit-scrollbar { display: none; }
+
+  .school-tab {
+    font-size: 0.78rem;
+    padding: 8px 10px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  /* Nagłówek sekcji — stack na mobile */
+  .messages-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  .messages-header > div { width: 100%; }
+  .messages-header > div { display: flex; gap: 8px; }
+
+  /* Przycisk odśwież — pełna szerokość */
+  .btn-refresh {
+    flex: 1;
+    justify-content: center;
+  }
+
+  /* Tabela wiadomości — karty zamiast tabeli */
+  .messages-table-wrap {
+    border-radius: var(--radius-md);
+    overflow: hidden;
+  }
+
+  .messages-table {
+    display: block;
+  }
+  .messages-table thead { display: none; } /* ukryj nagłówek tabeli */
+  .messages-table tbody { display: flex; flex-direction: column; gap: 8px; }
+  .messages-table tr {
+    display: flex;
+    flex-direction: column;
+    background: var(--clr-surface);
+    border: 1.5px solid var(--clr-border);
+    border-radius: var(--radius-md);
+    padding: 12px;
+    gap: 4px;
+  }
+  .messages-table td {
+    border: none;
+    padding: 0;
+    font-size: 0.85rem;
+  }
+  .messages-table td.msg-date {
+    font-size: 0.75rem;
+    color: var(--clr-text-muted);
+    order: -1;
+  }
+  .messages-table td.msg-user {
+    font-weight: 600;
+    color: var(--clr-text);
+  }
+  .messages-table td.msg-topic {
+    color: var(--clr-text-muted);
+    font-size: 0.82rem;
+  }
+  .messages-table td.msg-link {
+    margin-top: 4px;
+  }
+
+  /* Tabela płatności — karty */
+  .payments-table thead { display: none; }
+  .payments-table tbody { display: flex; flex-direction: column; gap: 8px; }
+  .payments-table tr {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    grid-template-rows: auto auto auto;
+    background: var(--clr-surface);
+    border: 1.5px solid var(--clr-border);
+    border-radius: var(--radius-md);
+    padding: 12px;
+    gap: 4px 8px;
+  }
+  .payments-table tr.row-overdue {
+    border-color: var(--clr-error-border);
+    background: var(--clr-error-bg);
+  }
+  .payments-table tr.row-paid { opacity: 0.6; }
+
+  .pay-month {
+    font-weight: 700;
+    font-size: 0.9rem;
+    grid-column: 1;
+    grid-row: 1;
+  }
+  .pay-amount {
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: var(--clr-primary-dark);
+    grid-column: 2;
+    grid-row: 1;
+    text-align: right;
+  }
+  .pay-deadline {
+    font-size: 0.78rem;
+    color: var(--clr-text-muted);
+    grid-column: 1;
+    grid-row: 2;
+  }
+  .pay-deadline::before { content: "Termin: "; }
+  .pay-status-cell {
+    grid-column: 1 / -1;
+    grid-row: 3;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  /* Suma roku szkolnego */
+  .pay-year-total {
+    font-size: 0.75rem;
+    display: block;
+    margin-left: 0;
+    margin-top: 4px;
+  }
+
+  /* Stronicowanie */
+  .pagination {
+    flex-direction: column;
+    gap: 8px;
+    align-items: center;
+  }
+
+  /* Własne wydarzenia */
+  .event-user-card {
+    padding: 10px 12px;
+    gap: 8px;
+  }
+
+  /* Modalne — pełny ekran na mobile */
+  .modal-backdrop {
+    align-items: flex-end; /* modal wysuwa się od dołu jak iOS sheet */
+  }
+  .modal-box {
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    max-height: 90vh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: env(safe-area-inset-bottom);
+    width: 100%;
+    max-width: 100%;
+  }
+  .modal-box--wide {
+    max-width: 100%;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  }
+
+  /* Inputy — większe dla palca */
+  .modal-field input,
+  .modal-field textarea,
+  .modal-field select {
+    font-size: 16px; /* zapobiega auto-zoom na iOS */
+    min-height: 44px;
+  }
+}

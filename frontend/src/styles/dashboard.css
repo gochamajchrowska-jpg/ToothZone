@@ -478,3 +478,96 @@
   justify-content: center;
   gap: var(--space-sm);
 }
+
+/* ============================================================
+   MOBILE — responsive dla iPhone (iOS Safari)
+   ============================================================ */
+
+/* ── Nawigacja dolna na mobile ───────────────────────────────── */
+@media (max-width: 640px) {
+
+  /* Header — kompaktowy */
+  .app-header {
+    padding: 10px 16px;
+  }
+  .app-logo-sub { display: none; } /* ukryj podtytuł */
+  .app-logo-main { font-size: 1.1rem; }
+  .app-user-email { display: none; }
+  .btn-logout {
+    padding: 6px 12px;
+    font-size: 0.78rem;
+  }
+
+  /* Nawigacja — dolny pasek jak iOS tab bar */
+  .app-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    top: auto;
+    z-index: 100;
+    border-bottom: none;
+    border-top: 1px solid var(--clr-border);
+    padding: 0;
+    padding-bottom: env(safe-area-inset-bottom); /* iPhone X+ notch */
+    background: var(--clr-surface);
+    display: flex;
+    justify-content: space-around;
+    box-shadow: 0 -2px 10px rgba(0,0,0,0.08);
+  }
+
+  .app-nav-link {
+    flex: 1;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    padding: 8px 4px;
+    font-size: 0.65rem;
+    border-bottom: none;
+    border-top: 3px solid transparent;
+    min-height: 56px;
+  }
+
+  .app-nav-link.active {
+    border-bottom: none;
+    border-top-color: var(--clr-primary);
+    color: var(--clr-primary);
+  }
+
+  /* Emoji w nawigacji — większe na mobile */
+  .app-nav-link::first-letter { font-size: 1.2rem; }
+
+  /* Treść główna — padding-bottom żeby nie chować się pod tab bar */
+  .app-main {
+    padding: 16px 16px calc(80px + env(safe-area-inset-bottom));
+    gap: 20px;
+  }
+
+  /* Hero — mniejszy */
+  .dash-hero {
+    padding: 20px 16px;
+    border-radius: var(--radius-md);
+  }
+  .dash-welcome { font-size: 1.4rem; }
+  .dash-tagline { font-size: 0.85rem; }
+
+  /* Karty wydarzeń */
+  .event-card {
+    padding: 12px;
+    gap: 10px;
+  }
+  .event-badge { display: none; } /* ukryj badge — za mało miejsca */
+  .event-icon { font-size: 1.2rem; }
+
+  /* Sekcja */
+  .dash-section { gap: 12px; }
+  .dash-section-title { font-size: 1rem; }
+
+  /* Subpage hero */
+  .subpage-hero {
+    padding: 16px;
+    border-radius: var(--radius-md);
+  }
+  .subpage-title { font-size: 1.3rem; }
+}

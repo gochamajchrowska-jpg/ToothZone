@@ -415,3 +415,15 @@
 .vulcan-loading, .vulcan-spinner, .vulcan-error-banner,
 .messages-empty, .messages-empty-hint,
 .messages-header { /* dziedziczone ze school.css przez globalny scope */ }
+
+/* ── Mobile ────────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .preschool-tabs {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .preschool-tabs::-webkit-scrollbar { display: none; }
+  .preschool-tab { font-size: 0.78rem; padding: 8px 12px; }
+  .btn-refresh--preschool { flex: 1; }
+}

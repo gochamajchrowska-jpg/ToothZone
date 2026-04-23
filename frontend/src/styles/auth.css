@@ -142,3 +142,14 @@
   font-size: 0.875rem;
   color: var(--clr-text-muted);
 }
+
+/* ── Mobile ────────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .auth-page { padding: 16px; align-items: flex-end; }
+  .auth-card {
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    padding: 28px 20px;
+    padding-bottom: calc(20px + env(safe-area-inset-bottom));
+  }
+  .auth-form input { font-size: 16px; } /* brak auto-zoom iOS */
+}

@@ -277,3 +277,59 @@
   cursor: pointer;
   accent-color: var(--clr-primary);
 }
+
+/* ── Mobile ────────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .obl-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .obl-header-actions {
+    width: 100%;
+  }
+  .obl-header-actions button {
+    flex: 1;
+    justify-content: center;
+  }
+  .btn-schedule { font-size: 0.8rem; }
+
+  /* Tabela zobowiązań → karty */
+  .obl-table thead { display: none; }
+  .obl-table tbody { display: flex; flex-direction: column; gap: 8px; }
+  .obl-table tr {
+    display: flex;
+    flex-direction: column;
+    background: var(--clr-surface);
+    border: 1.5px solid var(--clr-border);
+    border-radius: var(--radius-md);
+    padding: 12px;
+    gap: 6px;
+  }
+  .obl-table tr.row-overdue {
+    border-color: var(--clr-error-border);
+    background: var(--clr-error-bg);
+  }
+  .obl-table td { border: none; padding: 0; font-size: 0.85rem; }
+  .obl-actions {
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 4px;
+  }
+
+  /* Harmonogramy */
+  .obl-schedule-card {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  .obl-schedule-btns { width: 100%; justify-content: flex-start; }
+
+  /* Harmonogram modal — siatka na mobile */
+  .schedule-grid-header,
+  .schedule-grid-row {
+    grid-template-columns: 1.2fr 1fr 1fr;
+    gap: 4px;
+    font-size: 0.78rem;
+  }
+  .schedule-grid-row input { font-size: 14px; padding: 3px 6px; }
+}

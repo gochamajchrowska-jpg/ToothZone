@@ -1,34 +1,29 @@
 /* ============================================================
    global.css — Zmienne CSS, reset i style bazowe
-   Zmiana: nowa paleta rodzinna (błękity, beże, pastele)
+   Mobile-first dla iOS (iPhone)
    ============================================================ */
 
 :root {
-  /* --- Kolory główne --- */
-  --clr-bg: #f5f0eb;              /* ciepłe beżowe tło */
+  --clr-bg: #f5f0eb;
   --clr-surface: #ffffff;
-  --clr-surface-2: #faf7f4;       /* lekko ciepłe białe */
+  --clr-surface-2: #faf7f4;
   --clr-border: #e8e0d8;
 
-  /* Kolor akcentu — spokojny niebieski zamiast teal */
   --clr-primary: #4a90c4;
   --clr-primary-dark: #357aad;
   --clr-primary-light: #dceef8;
 
-  /* Kolory kategorii wydarzeń */
-  --clr-school: #6aaa64;          /* zielony — szkoła */
+  --clr-school: #6aaa64;
   --clr-school-bg: #edf7ec;
-  --clr-preschool: #e89c3a;       /* pomarańczowy — przedszkole */
+  --clr-preschool: #e89c3a;
   --clr-preschool-bg: #fef3e2;
-  --clr-other: #9b8ccc;           /* fioletowy — inne */
+  --clr-other: #9b8ccc;
   --clr-other-bg: #f0ecfb;
 
-  /* Teksty */
   --clr-text: #2d2a26;
   --clr-text-muted: #6b6560;
   --clr-text-light: #a09890;
 
-  /* Komunikaty */
   --clr-error-bg: #fef2f2;
   --clr-error-text: #dc2626;
   --clr-error-border: #fecaca;
@@ -36,11 +31,9 @@
   --clr-success-text: #16a34a;
   --clr-success-border: #bbf7d0;
 
-  /* Typografia */
   --font-display: "Syne", sans-serif;
   --font-body: "DM Sans", sans-serif;
 
-  /* Odstępy */
   --space-xs: 0.25rem;
   --space-sm: 0.5rem;
   --space-md: 1rem;
@@ -48,18 +41,15 @@
   --space-xl: 2rem;
   --space-2xl: 3rem;
 
-  /* Zaokrąglenia — większe dla rodzinnego klimatu */
   --radius-sm: 8px;
   --radius-md: 14px;
   --radius-lg: 22px;
 
-  /* Cienie */
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.03);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.07), 0 2px 4px rgba(0, 0, 0, 0.04);
-  --shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.09), 0 4px 8px rgba(0, 0, 0, 0.05);
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.05), 0 1px 2px rgba(0,0,0,0.03);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.07), 0 2px 4px rgba(0,0,0,0.04);
+  --shadow-lg: 0 10px 30px rgba(0,0,0,0.09), 0 4px 8px rgba(0,0,0,0.05);
 }
 
-/* ── Reset ─────────────────────────────────────────────────── */
 *, *::before, *::after {
   box-sizing: border-box;
   margin: 0;
@@ -69,6 +59,7 @@
 html {
   font-size: 16px;
   -webkit-font-smoothing: antialiased;
+  -webkit-text-size-adjust: 100%; /* zapobiega auto-powiększaniu tekstu na iOS */
 }
 
 body {
@@ -77,6 +68,20 @@ body {
   color: var(--clr-text);
   line-height: 1.6;
   min-height: 100vh;
+  min-height: -webkit-fill-available; /* iOS Safari pełna wysokość */
+  overscroll-behavior: none;
+}
+
+/* Lepszy dotyk na iOS — bez opóźnienia 300ms */
+a, button, input, textarea, select {
+  touch-action: manipulation;
+}
+
+/* Minimum rozmiar tap target = 44px (Apple HIG) */
+button, .btn-primary, .btn-cancel, .btn-save,
+.btn-refresh, .btn-add, .btn-logout,
+.school-tab, .app-nav-link {
+  min-height: 44px;
 }
 
 a {
@@ -85,12 +90,8 @@ a {
   font-weight: 500;
   transition: color 0.15s;
 }
-a:hover {
-  color: var(--clr-primary-dark);
-  text-decoration: underline;
-}
+a:hover { color: var(--clr-primary-dark); text-decoration: underline; }
 
-/* ── Komunikaty błędów / sukcesów ───────────────────────────── */
 .msg {
   padding: var(--space-sm) var(--space-md);
   border-radius: var(--radius-sm);
@@ -98,13 +99,5 @@ a:hover {
   font-weight: 500;
   margin-top: var(--space-sm);
 }
-.msg--error {
-  background: var(--clr-error-bg);
-  color: var(--clr-error-text);
-  border: 1px solid var(--clr-error-border);
-}
-.msg--success {
-  background: var(--clr-success-bg);
-  color: var(--clr-success-text);
-  border: 1px solid var(--clr-success-border);
-}
+.msg--error { background: var(--clr-error-bg); color: var(--clr-error-text); border: 1px solid var(--clr-error-border); }
+.msg--success { background: var(--clr-success-bg); color: var(--clr-success-text); border: 1px solid var(--clr-success-border); }
