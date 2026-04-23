@@ -414,44 +414,30 @@ export default function ObligationsPage() {
   }, [schoolPay, preschoolPay, schoolManual, preschoolManual, manuals, generatedEntries]);
 
   // ── Filtruj niezapłacone ─────────────────────────────────────
+  // Dla płatności ze szkoły/przedszkola stosujemy dwa kryteria:
+  // 1. Nie zapłacona (wg localStorage tego urządzenia)
+  // 2. Termin płatności nie starszy niż 3 miesiące temu
+  //    → jeśli termin minął dawno, zakładamy że została zapłacona
+  //      (może na innym urządzeniu)
   const unpaid = useMemo(() => {
     const now = new Date();
-    // Cutoff = 1. dzień miesiąca sprzed 2 miesięcy
-    const cutoff = new Date(now.getFullYear(), now.getMonth() - 2, 1);
-
-    // Mapa znormalizowanych miesięcy → rok/miesiąc dla porównania
-    function monthKeyFromId(id) {
-      // id np. "kwiecien 2026" → "2026-04"
-      const MONTHS = {
-        "styczen":1,"luty":2,"marzec":3,"kwiecien":4,"maj":5,"czerwiec":6,
-        "lipiec":7,"sierpien":8,"wrzesien":9,"pazdziernik":10,"listopad":11,"grudzien":12
-      };
-      if (!id) return null;
-      const parts = id.toLowerCase().split(" ");
-      if (parts.length < 2) return null;
-      const m = MONTHS[parts[0]];
-      const y = parseInt(parts[1]);
-      if (!m || !y) return null;
-      return new Date(y, m - 1, 1);
-    }
+    // Cutoff terminu: 1. dzień miesiąca sprzed 3 miesięcy
+    const termCutoff = new Date(now.getFullYear(), now.getMonth() - 3, 1);
 
     return allPayments.filter((p) => {
-      // 1. Pomiń jeśli zapłacona (osobne zbiory dla szkoły i przedszkola)
+      // ── Krok 1: czy zapłacona lokalnie? ──
       if (p.source === "school"    && (schoolPaidIds.has(p.id)    || oblPaidIds.has(p.id))) return false;
       if (p.source === "preschool" && (preschoolPaidIds.has(p.id) || oblPaidIds.has(p.id))) return false;
       if (p.source !== "school" && p.source !== "preschool" && oblPaidIds.has(p.id)) return false;
 
-      // 2. Dla płatności ze szkoły/przedszkola — ukryj starsze niż 2 miesiące
+      // ── Krok 2: dla szkoły/przedszkola — ukryj stare faktury ──
+      // Używamy terminu płatności jako wyznacznika "czy aktualna"
       if (p.source === "school" || p.source === "preschool") {
-        // Użyj ID (znormalizowany miesiąc) do określenia daty
-        const monthDate = monthKeyFromId(p.id);
-        if (monthDate && monthDate < cutoff) return false;
-
-        // Fallback: użyj terminu płatności
-        if (!monthDate && p.termin && p.termin !== "—") {
-          const termDate = parseDate(p.termin);
-          if (termDate.getTime() > 0 && termDate < cutoff) return false;
-        }
+        const term = parseDate(p.termin);
+        // Jeśli termin jest znany i starszy niż 3 miesiące → ukryj
+        if (term.getTime() > 0 && term < termCutoff) return false;
+        // Jeśli brak terminu ("—") — ukryj żeby nie zaśmiecać listy
+        if (!p.termin || p.termin === "—") return false;
       }
 
       return true;
