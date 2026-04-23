@@ -286,12 +286,12 @@ export default function ObligationsPage() {
     catch { return []; }
   });
 
-  // ── Zapłacone IDs ─────────────────────────────────────────
+  // ── Zapłacone IDs — ze wszystkich źródeł ─────────────────
   const [paidIds, setPaidIds] = useState(() => {
     try {
-      const s = JSON.parse(localStorage.getItem(OBL_PAID_KEY) || "[]");
-      const p = JSON.parse(localStorage.getItem(OBL_PRE_PAID_KEY) || "[]");
-      return new Set([...s, ...p]);
+      const school     = JSON.parse(localStorage.getItem(OBL_PAID_KEY)       || "[]");
+      const preschool  = JSON.parse(localStorage.getItem(OBL_PRE_PAID_KEY)   || "[]");
+      return new Set([...school, ...preschool]);
     } catch { return new Set(); }
   });
   const [oblPaidIds, setOblPaidIds] = useState(() => {
@@ -366,6 +366,16 @@ export default function ObligationsPage() {
   }, [manuals, schedules]);
 
   // ── Połącz wszystkie płatności ────────────────────────────
+  // Ręczne płatności z zakładek szkoła i przedszkole (localStorage)
+  const schoolManual    = useMemo(() => {
+    try { return JSON.parse(localStorage.getItem("tz_school_manual_payments") || "[]"); }
+    catch { return []; }
+  }, []);
+  const preschoolManual = useMemo(() => {
+    try { return JSON.parse(localStorage.getItem("tz_preschool_manual_payments") || "[]"); }
+    catch { return []; }
+  }, []);
+
   const allPayments = useMemo(() => {
     const fromSchool = schoolPay.map((p) => ({
       ...p, source: "school", name: `Szkoła — ${p.miesiac}`,
@@ -373,13 +383,26 @@ export default function ObligationsPage() {
     const fromPreschool = preschoolPay.map((p) => ({
       ...p, source: "preschool", name: `Przedszkole — ${p.miesiac}`,
     }));
+    // Ręczne z zakładki Szkoła
+    const fromSchoolManual = schoolManual.map((p) => ({
+      ...p, source: "school", name: p.miesiac || p.name || "Szkoła",
+    }));
+    // Ręczne z zakładki Przedszkole
+    const fromPreschoolManual = preschoolManual.map((p) => ({
+      ...p, source: "preschool", name: p.miesiac || p.name || "Przedszkole",
+    }));
+    // Ręczne z tej zakładki
     const fromManual = manuals.filter((m) => !m.cyclic).map((m) => ({
       id: m.id, name: m.name, kwota: m.kwota, termin: m.termin,
       komentarz: m.komentarz, source: "manual",
     }));
 
-    return [...fromSchool, ...fromPreschool, ...fromManual, ...generatedEntries];
-  }, [schoolPay, preschoolPay, manuals, generatedEntries]);
+    return [
+      ...fromSchool, ...fromSchoolManual,
+      ...fromPreschool, ...fromPreschoolManual,
+      ...fromManual, ...generatedEntries
+    ];
+  }, [schoolPay, preschoolPay, schoolManual, preschoolManual, manuals, generatedEntries]);
 
   // ── Filtruj tylko niezapłacone / po terminie ──────────────
   const unpaid = useMemo(() => {
@@ -389,18 +412,24 @@ export default function ObligationsPage() {
     }).sort((a, b) => parseDate(a.termin) - parseDate(b.termin));
   }, [allPayments, paidIds, oblPaidIds]);
 
-  function togglePaid(id) {
+  function togglePaid(id, source) {
     setOblPaidIds((prev) => {
       const next = new Set(prev);
       next.has(id) ? next.delete(id) : next.add(id);
       return next;
     });
-    // Też aktualizuj wspólny storage żeby inne zakładki widziały zmianę
     setPaidIds((prev) => {
       const next = new Set(prev);
       next.has(id) ? next.delete(id) : next.add(id);
       return next;
     });
+    // Aktualizuj właściwy klucz localStorage żeby inne zakładki widziały zmianę
+    const key = (source === "preschool") ? OBL_PRE_PAID_KEY : OBL_PAID_KEY;
+    try {
+      const current = new Set(JSON.parse(localStorage.getItem(key) || "[]"));
+      if (current.has(id)) { current.delete(id); } else { current.add(id); }
+      localStorage.setItem(key, JSON.stringify([...current]));
+    } catch {}
   }
 
   function handleSaveManual(obl) {
@@ -542,7 +571,7 @@ export default function ObligationsPage() {
                     <td className="obl-actions">
                       <button
                         className="btn-mark-paid"
-                        onClick={() => togglePaid(pay.id)}
+                        onClick={() => togglePaid(pay.id, pay.source)}
                       >
                         Zapłać
                       </button>
