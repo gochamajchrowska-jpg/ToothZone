@@ -292,20 +292,28 @@ export default function ObligationsPage() {
     catch { return []; }
   });
 
-  // ── Zapłacone IDs — osobno dla szkoły i przedszkola ─────────
-  // WAŻNE: nie łączymy w jeden zbiór bo ID są takie same (np. "marzec 2026")
-  const [schoolPaidIds, setSchoolPaidIds] = useState(() => {
+  // ── Zapłacone IDs — odczytywane świeżo przy każdym renderze ──
+  // Osobne zbiory dla szkoły i przedszkola (te same ID np. "marzec 2026")
+  // Używamy stanu do wymuszenia re-renderu po kliknięciu Zapłać
+  const [paidVersion, setPaidVersion] = useState(0);
+
+  const schoolPaidIds = useMemo(() => {
     try { return new Set(JSON.parse(localStorage.getItem(OBL_PAID_KEY) || "[]")); }
     catch { return new Set(); }
-  });
-  const [preschoolPaidIds, setPreschoolPaidIds] = useState(() => {
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paidVersion]);
+
+  const preschoolPaidIds = useMemo(() => {
     try { return new Set(JSON.parse(localStorage.getItem(OBL_PRE_PAID_KEY) || "[]")); }
     catch { return new Set(); }
-  });
-  const [oblPaidIds, setOblPaidIds] = useState(() => {
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paidVersion]);
+
+  const oblPaidIds = useMemo(() => {
     try { return new Set(JSON.parse(localStorage.getItem("tz_obl_paid") || "[]")); }
     catch { return new Set(); }
-  });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paidVersion]);
 
   useEffect(() => {
     localStorage.setItem(OBL_MANUAL_KEY,   JSON.stringify(manuals));
@@ -313,9 +321,7 @@ export default function ObligationsPage() {
   useEffect(() => {
     localStorage.setItem(OBL_SCHEDULE_KEY, JSON.stringify(schedules));
   }, [schedules]);
-  useEffect(() => {
-    localStorage.setItem("tz_obl_paid", JSON.stringify([...oblPaidIds]));
-  }, [oblPaidIds]);
+
 
   // ── Modals ────────────────────────────────────────────────
   const [showAddModal,      setShowAddModal]      = useState(false);
@@ -445,28 +451,22 @@ export default function ObligationsPage() {
   }, [allPayments, schoolPaidIds, preschoolPaidIds, oblPaidIds]);
 
   function togglePaid(id, source) {
+    // Zapisz do właściwego klucza localStorage
     if (source === "school") {
-      setSchoolPaidIds((prev) => {
-        const next = new Set(prev);
-        next.has(id) ? next.delete(id) : next.add(id);
-        localStorage.setItem(OBL_PAID_KEY, JSON.stringify([...next]));
-        return next;
-      });
+      const current = new Set(JSON.parse(localStorage.getItem(OBL_PAID_KEY) || "[]"));
+      current.has(id) ? current.delete(id) : current.add(id);
+      localStorage.setItem(OBL_PAID_KEY, JSON.stringify([...current]));
     } else if (source === "preschool") {
-      setPreschoolPaidIds((prev) => {
-        const next = new Set(prev);
-        next.has(id) ? next.delete(id) : next.add(id);
-        localStorage.setItem(OBL_PRE_PAID_KEY, JSON.stringify([...next]));
-        return next;
-      });
+      const current = new Set(JSON.parse(localStorage.getItem(OBL_PRE_PAID_KEY) || "[]"));
+      current.has(id) ? current.delete(id) : current.add(id);
+      localStorage.setItem(OBL_PRE_PAID_KEY, JSON.stringify([...current]));
     } else {
-      setOblPaidIds((prev) => {
-        const next = new Set(prev);
-        next.has(id) ? next.delete(id) : next.add(id);
-        localStorage.setItem("tz_obl_paid", JSON.stringify([...next]));
-        return next;
-      });
+      const current = new Set(JSON.parse(localStorage.getItem("tz_obl_paid") || "[]"));
+      current.has(id) ? current.delete(id) : current.add(id);
+      localStorage.setItem("tz_obl_paid", JSON.stringify([...current]));
     }
+    // Wymusz re-render żeby listy się zaktualizowały
+    setPaidVersion(v => v + 1);
   }
 
   function handleSaveManual(obl) {

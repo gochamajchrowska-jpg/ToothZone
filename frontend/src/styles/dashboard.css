@@ -540,11 +540,8 @@
 
   /* Treść główna — padding-bottom żeby nie chować się pod tab bar */
   .app-main {
-    padding: 16px 16px calc(90px + env(safe-area-inset-bottom));
+    padding: 16px 16px calc(110px + env(safe-area-inset-bottom));
     gap: 20px;
-    /* Zapewnij że kliknięcia docierają do elementów pod tab barem */
-    position: relative;
-    z-index: 1;
   }
 
   /* Hero — mniejszy */
