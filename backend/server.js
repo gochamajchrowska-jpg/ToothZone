@@ -1,58 +1,119 @@
 // ============================================================
 //  Tooth Zone — Backend Express
+//  Dane użytkownika persystowane w MongoDB Atlas
 // ============================================================
 
-const express   = require("express");
-const bcrypt    = require("bcrypt");
-const jwt       = require("jsonwebtoken");
-const cors      = require("cors");
-const fs        = require("fs");
-const path      = require("path");
-const { exec }  = require("child_process");
+const express        = require("express");
+const bcrypt         = require("bcrypt");
+const jwt            = require("jsonwebtoken");
+const cors           = require("cors");
+const { exec }       = require("child_process");
+const path           = require("path");
+const { MongoClient } = require("mongodb");
+
 const app        = express();
 const PORT       = process.env.PORT || 5000;
-const JWT_SECRET = process.env.JWT_SECRET || "tooth-zone-super-secret-key-change-in-prod";
+const JWT_SECRET = process.env.JWT_SECRET || "tooth-zone-secret";
 
-// ── Jeden użytkownik z zmiennych środowiskowych ───────────────
-// Ustaw APP_EMAIL i APP_PASSWORD w Railway → Variables
-// Przy starcie serwer zahashuje hasło i będzie go używał do logowania
+// ── MongoDB ───────────────────────────────────────────────────
+const MONGO_URI = process.env.MONGO_URI || "";
+const DB_NAME   = "toothzone";
+const COL_NAME  = "userdata";
+
+let db  = null;
+let col = null;
+
+async function connectMongo() {
+  if (!MONGO_URI) {
+    console.warn("[MongoDB] Brak MONGO_URI — dane nie będą persystowane!");
+    return;
+  }
+  try {
+    const client = new MongoClient(MONGO_URI, { serverSelectionTimeoutMS: 10000 });
+    await client.connect();
+    db  = client.db(DB_NAME);
+    col = db.collection(COL_NAME);
+    // Utwórz dokument jeśli nie istnieje
+    await col.updateOne(
+      { _id: "userdata" },
+      { $setOnInsert: EMPTY_USERDATA() },
+      { upsert: true }
+    );
+    console.log("[MongoDB] Połączono z Atlas ✅");
+  } catch (err) {
+    console.error("[MongoDB] Błąd połączenia:", err.message);
+  }
+}
+
+function EMPTY_USERDATA() {
+  return {
+    _id:             "userdata",
+    schoolManual:    [],
+    preschoolManual: [],
+    schoolPaid:      [],
+    preschoolPaid:   [],
+    schoolEvents:    [],
+    preschoolEvents: [],
+    oblManual:       [],
+    oblSchedules:    [],
+    oblPaid:         [],
+  };
+}
+
+async function loadUserData() {
+  if (!col) return EMPTY_USERDATA();
+  try {
+    const doc = await col.findOne({ _id: "userdata" });
+    return doc || EMPTY_USERDATA();
+  } catch (err) {
+    console.error("[MongoDB] Błąd odczytu:", err.message);
+    return EMPTY_USERDATA();
+  }
+}
+
+async function saveUserData(patch) {
+  if (!col) return;
+  try {
+    await col.updateOne(
+      { _id: "userdata" },
+      { $set: patch },
+      { upsert: true }
+    );
+  } catch (err) {
+    console.error("[MongoDB] Błąd zapisu:", err.message);
+  }
+}
+
+// ── Auth ──────────────────────────────────────────────────────
 const APP_EMAIL    = process.env.APP_EMAIL    || "";
 const APP_PASSWORD = process.env.APP_PASSWORD || "";
 let   APP_PASSWORD_HASH = null;
 
-// Zahashuj hasło przy starcie (async, gotowe przed pierwszym logowaniem)
 if (APP_EMAIL && APP_PASSWORD) {
   bcrypt.hash(APP_PASSWORD, 10).then(hash => {
     APP_PASSWORD_HASH = hash;
     console.log(`[Auth] Użytkownik skonfigurowany: ${APP_EMAIL}`);
   });
 } else {
-  console.warn("[Auth] Brak APP_EMAIL lub APP_PASSWORD — logowanie niemożliwe!");
+  console.warn("[Auth] Brak APP_EMAIL lub APP_PASSWORD!");
 }
 
+// ── Middleware ────────────────────────────────────────────────
 app.use(cors({ origin: true, credentials: true }));
 app.use(express.json());
 
-// ── Cache w pamięci ───────────────────────────────────────────
-// Dane żyją w pamięci serwera — po restarcie Railway ładowane automatycznie
-let messagesCache       = [];  // wiadomości e-dziennik
-let paymentsCache       = [];  // płatności szkoła (Marcelina)
-let preschoolCache      = [];  // płatności przedszkole (Iga)
-let dataLoaded          = false; // czy pierwsze ładowanie się skończyło
-
-// ── Helpers ───────────────────────────────────────────────────
-
 function authenticateToken(req, res, next) {
   const token = (req.headers["authorization"] || "").split(" ")[1];
-  if (!token) return res.status(401).json({ message: "Brak dostępu. Nie podano tokenu." });
+  if (!token) return res.status(401).json({ message: "Brak tokenu." });
   try {
     req.user = jwt.verify(token, JWT_SECRET);
     next();
   } catch {
-    return res.status(403).json({ message: "Nieprawidłowy lub wygasły token." });
+    return res.status(403).json({ message: "Nieprawidłowy token." });
   }
 }
 
+// ── Python helper ─────────────────────────────────────────────
 function runPythonScript(scriptName, timeoutMs = 120000, sinceDays = null) {
   return new Promise((resolve, reject) => {
     const scriptPath = path.join(__dirname, scriptName);
@@ -62,7 +123,6 @@ function runPythonScript(scriptName, timeoutMs = 120000, sinceDays = null) {
     const imapServer = process.env.IMAP_SERVER    || "imap.wp.pl";
     const imapPort   = process.env.IMAP_PORT      || "993";
     const cmd = `python3 "${scriptPath}" "${emailAddr}" "${emailPass}" "${imapServer}" "${imapPort}"${sinceArg}`;
-
     exec(cmd, { timeout: timeoutMs }, (error, stdout, stderr) => {
       if (stderr) console.error(`[${scriptName}] stderr:\n${stderr}`);
       if (error)  return reject(new Error(`Błąd skryptu: ${error.message}`));
@@ -71,6 +131,11 @@ function runPythonScript(scriptName, timeoutMs = 120000, sinceDays = null) {
     });
   });
 }
+
+// ── Cache e-mail ──────────────────────────────────────────────
+let messagesCache  = [];
+let paymentsCache  = [];
+let preschoolCache = [];
 
 function deduplicatePayments(payments) {
   const toKey = (s) => (s || "").toLowerCase()
@@ -85,43 +150,32 @@ function deduplicatePayments(payments) {
   return Array.from(seen.values());
 }
 
-// Scalaj nowe wiadomości z cache (deduplikuj po id)
 function mergeMessages(cache, newItems) {
   const existingIds = new Set(cache.map(m => m.id));
   const added = newItems.filter(m => !existingIds.has(m.id));
   return added.length > 0 ? [...added, ...cache] : cache;
 }
 
-// Scalaj nowe płatności z cache (deduplikuj po miesiac)
 function mergePayments(cache, newItems) {
-  const all = [...newItems, ...cache];
-  return deduplicatePayments(all);
+  return deduplicatePayments([...newItems, ...cache]);
 }
 
-// ── Auth ──────────────────────────────────────────────────────
-
+// ── Endpointy auth ────────────────────────────────────────────
 app.post("/register", (req, res) => {
-  // Rejestracja wyłączona — aplikacja używa jednego konta z zmiennych środowiskowych
-  res.status(403).json({ message: "Rejestracja jest wyłączona. Skontaktuj się z administratorem." });
+  res.status(403).json({ message: "Rejestracja wyłączona." });
 });
 
 app.post("/login", async (req, res) => {
   const { email, password } = req.body;
-  if (!email || !password) return res.status(400).json({ message: "Adres e-mail i hasło są wymagane." });
-
-  // Sprawdź czy to skonfigurowany użytkownik
-  if (email !== APP_EMAIL) {
-    return res.status(401).json({ message: "Nieprawidłowy adres e-mail lub hasło." });
-  }
-  if (!APP_PASSWORD_HASH) {
-    return res.status(503).json({ message: "Serwer nie jest jeszcze gotowy. Spróbuj za chwilę." });
-  }
-
+  if (!email || !password)
+    return res.status(400).json({ message: "Email i hasło są wymagane." });
+  if (email !== APP_EMAIL)
+    return res.status(401).json({ message: "Nieprawidłowy email lub hasło." });
+  if (!APP_PASSWORD_HASH)
+    return res.status(503).json({ message: "Serwer nie gotowy. Spróbuj za chwilę." });
   const match = await bcrypt.compare(password, APP_PASSWORD_HASH);
-  if (!match) {
-    return res.status(401).json({ message: "Nieprawidłowy adres e-mail lub hasło." });
-  }
-
+  if (!match)
+    return res.status(401).json({ message: "Nieprawidłowy email lub hasło." });
   const token = jwt.sign({ id: 1, email: APP_EMAIL }, JWT_SECRET, { expiresIn: "30d" });
   console.log(`🔑 Zalogowano: ${email}`);
   res.json({ token, email: APP_EMAIL });
@@ -132,13 +186,11 @@ app.get("/dashboard", authenticateToken, (req, res) => {
 });
 
 // ── Wiadomości szkoła ─────────────────────────────────────────
-
 app.get("/api/school/messages", authenticateToken, (req, res) => {
   res.json(messagesCache);
 });
 
 app.post("/api/school/messages/refresh", authenticateToken, (req, res) => {
-  // Pełne pobranie na żądanie (ostatnie 150)
   runPythonScript("email_checker.py", 120000)
     .then((data) => {
       if (Array.isArray(data)) messagesCache = data;
@@ -147,26 +199,22 @@ app.post("/api/school/messages/refresh", authenticateToken, (req, res) => {
     .catch((err) => res.status(500).json({ error: err.message }));
 });
 
-// ── Płatności szkoła (Marcelina) ──────────────────────────────
-
+// ── Płatności szkoła ──────────────────────────────────────────
 app.get("/api/school/payments", authenticateToken, (req, res) => {
   res.json(paymentsCache);
 });
 
 app.post("/api/school/payments/refresh", authenticateToken, (req, res) => {
-  // Przyrostowe pobranie — sprawdź maile z ostatnich 35 dni (cały miesiąc)
   runPythonScript("payment_checker.py", 120000, 35)
     .then((data) => {
-      if (Array.isArray(data) && data.length > 0) {
+      if (Array.isArray(data) && data.length > 0)
         paymentsCache = mergePayments(paymentsCache, data);
-      }
       res.json(paymentsCache);
     })
     .catch((err) => res.status(500).json({ error: err.message }));
 });
 
-// ── Płatności przedszkole (Iga) ───────────────────────────────
-
+// ── Płatności przedszkole ─────────────────────────────────────
 app.get("/api/preschool/payments", authenticateToken, (req, res) => {
   res.json(preschoolCache);
 });
@@ -174,20 +222,41 @@ app.get("/api/preschool/payments", authenticateToken, (req, res) => {
 app.post("/api/preschool/payments/refresh", authenticateToken, (req, res) => {
   runPythonScript("payment_checker_preschool.py", 120000, 35)
     .then((data) => {
-      if (Array.isArray(data) && data.length > 0) {
+      if (Array.isArray(data) && data.length > 0)
         preschoolCache = mergePayments(preschoolCache, data);
-      }
       res.json(preschoolCache);
     })
     .catch((err) => res.status(500).json({ error: err.message }));
 });
 
-// ── Harmonogram co godzinę ────────────────────────────────────
+// ── Dane użytkownika (MongoDB) ────────────────────────────────
+const ALLOWED_KEYS = [
+  "schoolManual","preschoolManual",
+  "schoolPaid","preschoolPaid",
+  "schoolEvents","preschoolEvents",
+  "oblManual","oblSchedules","oblPaid",
+];
 
+app.get("/api/userdata", authenticateToken, async (req, res) => {
+  const data = await loadUserData();
+  res.json(data);
+});
+
+app.patch("/api/userdata", authenticateToken, async (req, res) => {
+  const patch = {};
+  for (const key of ALLOWED_KEYS) {
+    if (req.body[key] !== undefined) patch[key] = req.body[key];
+  }
+  if (Object.keys(patch).length === 0)
+    return res.status(400).json({ message: "Brak danych do zapisu." });
+  await saveUserData(patch);
+  res.json({ ok: true });
+});
+
+// ── Scheduler ─────────────────────────────────────────────────
 function hourlyRefresh() {
   console.log("[Scheduler] Odświeżam dane...");
 
-  // Nowe wiadomości z ostatnich 2 dni
   runPythonScript("email_checker.py", 120000, 2)
     .then((data) => {
       if (!Array.isArray(data) || data.length === 0) return;
@@ -198,7 +267,6 @@ function hourlyRefresh() {
     })
     .catch((err) => console.error(`[Scheduler] Wiadomości błąd: ${err.message}`));
 
-  // Nowe płatności szkoła z ostatnich 35 dni
   runPythonScript("payment_checker.py", 120000, 35)
     .then((data) => {
       if (!Array.isArray(data) || data.length === 0) return;
@@ -209,7 +277,6 @@ function hourlyRefresh() {
     })
     .catch((err) => console.error(`[Scheduler] Płatności szkoła błąd: ${err.message}`));
 
-  // Nowe płatności przedszkole z ostatnich 35 dni
   runPythonScript("payment_checker_preschool.py", 120000, 35)
     .then((data) => {
       if (!Array.isArray(data) || data.length === 0) return;
@@ -222,121 +289,41 @@ function hourlyRefresh() {
 }
 
 // ── Start ─────────────────────────────────────────────────────
+async function start() {
+  await connectMongo();
 
-app.listen(PORT, () => {
-  console.log(`🦷 Tooth Zone backend działa na http://localhost:${PORT}`);
+  app.listen(PORT, () => {
+    console.log(`🦷 Tooth Zone backend na http://localhost:${PORT}`);
 
-  // Pierwsze ładowanie przy starcie — wszystkie dane (sekwencyjnie żeby nie przeciążyć IMAP)
-  console.log("[Startup] Ładuję wiadomości...");
-  runPythonScript("email_checker.py", 120000)
-    .then((data) => {
-      if (Array.isArray(data)) {
-        messagesCache = data;
-        console.log(`[Startup] Wiadomości: ${data.length}`);
-      }
-      // Dopiero po wiadomościach ładuj płatności (żeby nie przeciążyć serwera IMAP)
-      console.log("[Startup] Ładuję płatności szkoła...");
-      return runPythonScript("payment_checker.py", 120000);
-    })
-    .then((data) => {
-      if (Array.isArray(data)) {
-        paymentsCache = data;
-        console.log(`[Startup] Płatności szkoła: ${data.length}`);
-      }
-      console.log("[Startup] Ładuję płatności przedszkole...");
-      return runPythonScript("payment_checker_preschool.py", 120000);
-    })
-    .then((data) => {
-      if (Array.isArray(data)) {
-        preschoolCache = data;
-        console.log(`[Startup] Płatności przedszkole: ${data.length}`);
-      }
-      dataLoaded = true;
-      console.log("[Startup] Wszystkie dane załadowane ✅");
-    })
-    .catch((err) => console.error(`[Startup] Błąd: ${err.message}`));
+    console.log("[Startup] Ładuję wiadomości...");
+    runPythonScript("email_checker.py", 120000)
+      .then((data) => {
+        if (Array.isArray(data)) {
+          messagesCache = data;
+          console.log(`[Startup] Wiadomości: ${data.length}`);
+        }
+        console.log("[Startup] Ładuję płatności szkoła...");
+        return runPythonScript("payment_checker.py", 120000);
+      })
+      .then((data) => {
+        if (Array.isArray(data)) {
+          paymentsCache = data;
+          console.log(`[Startup] Płatności szkoła: ${data.length}`);
+        }
+        console.log("[Startup] Ładuję płatności przedszkole...");
+        return runPythonScript("payment_checker_preschool.py", 120000);
+      })
+      .then((data) => {
+        if (Array.isArray(data)) {
+          preschoolCache = data;
+          console.log(`[Startup] Płatności przedszkole: ${data.length}`);
+        }
+        console.log("[Startup] Wszystkie dane załadowane ✅");
+      })
+      .catch((err) => console.error(`[Startup] Błąd: ${err.message}`));
 
-  // Co godzinę sprawdzaj nowe dane
-  setInterval(hourlyRefresh, 60 * 60 * 1000);
-});
-
-// ── Dane użytkownika (ręczne płatności, zapłacone, zobowiązania) ──
-// Przechowywane w pamięci + persystowane do pliku JSON na dysku
-// (plik przetrwa restart jeśli Railway Volume jest zamontowane w /data)
-
-const DATA_FILE = process.env.DB_PATH
-  ? process.env.DB_PATH.replace("users.db", "userdata.json")
-  : path.join(__dirname, "userdata.json");
-
-// Struktura danych użytkownika
-let userData = {
-  schoolManual:     [],   // ręczne płatności szkoła
-  preschoolManual:  [],   // ręczne płatności przedszkole
-  schoolPaid:       [],   // zapłacone szkoła (array of IDs)
-  preschoolPaid:    [],   // zapłacone przedszkole
-  schoolEvents:     [],   // własne wydarzenia szkolne
-  preschoolEvents:  [],   // własne wydarzenia przedszkolne
-  oblManual:        [],   // ręczne zobowiązania
-  oblSchedules:     [],   // harmonogramy
-  oblPaid:          [],   // zapłacone zobowiązania
-};
-
-// Załaduj dane z pliku jeśli istnieje
-function loadUserData() {
-  try {
-    if (fs.existsSync(DATA_FILE)) {
-      const raw = JSON.parse(fs.readFileSync(DATA_FILE, "utf-8"));
-      userData = { ...userData, ...raw };
-      console.log("[UserData] Załadowano dane użytkownika z pliku.");
-    }
-  } catch (err) {
-    console.error("[UserData] Błąd ładowania:", err.message);
-  }
+    setInterval(hourlyRefresh, 60 * 60 * 1000);
+  });
 }
 
-// Zapisz dane do pliku (debounced — max raz na 2 sekundy)
-let saveTimer = null;
-function saveUserData() {
-  clearTimeout(saveTimer);
-  saveTimer = setTimeout(() => {
-    try {
-      fs.writeFileSync(DATA_FILE, JSON.stringify(userData, null, 2));
-    } catch (err) {
-      console.error("[UserData] Błąd zapisu:", err.message);
-    }
-  }, 2000);
-}
-
-loadUserData();
-
-// ── GET /api/userdata ─────────────────────────────────────────
-// Zwraca wszystkie dane użytkownika naraz
-app.get("/api/userdata", authenticateToken, (req, res) => {
-  res.json(userData);
-});
-
-// ── POST /api/userdata ────────────────────────────────────────
-// Zapisuje wszystkie dane użytkownika naraz (pełny replace)
-app.post("/api/userdata", authenticateToken, (req, res) => {
-  const allowed = ["schoolManual","preschoolManual","schoolPaid","preschoolPaid","schoolEvents","preschoolEvents","oblManual","oblSchedules","oblPaid"];
-  for (const key of allowed) {
-    if (req.body[key] !== undefined) {
-      userData[key] = req.body[key];
-    }
-  }
-  saveUserData();
-  res.json({ ok: true, userData });
-});
-
-// ── PATCH /api/userdata ───────────────────────────────────────
-// Aktualizuje tylko wskazane klucze (merge)
-app.patch("/api/userdata", authenticateToken, (req, res) => {
-  const allowed = ["schoolManual","preschoolManual","schoolPaid","preschoolPaid","schoolEvents","preschoolEvents","oblManual","oblSchedules","oblPaid"];
-  for (const key of allowed) {
-    if (req.body[key] !== undefined) {
-      userData[key] = req.body[key];
-    }
-  }
-  saveUserData();
-  res.json({ ok: true });
-});
+start();
