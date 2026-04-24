@@ -286,6 +286,54 @@ app.patch("/api/userdata", authenticateToken, async (req, res) => {
   res.json({ ok: true });
 });
 
+// ── Pełne pobranie historyczne (jednorazowe) ─────────────────
+app.post("/api/admin/full-refresh", authenticateToken, async (req, res) => {
+  res.json({ ok: true, message: "Pełne pobranie uruchomione w tle. Sprawdź logi." });
+
+  // Uruchom asynchronicznie w tle
+  (async () => {
+    console.log("[FullRefresh] Startuję pełne pobranie historyczne...");
+
+    try {
+      const msgs = await runPythonScript("email_checker.py", 300000); // wszystkie
+      if (Array.isArray(msgs)) {
+        messagesCache = msgs;
+        await saveCache("messages", msgs);
+        console.log(`[FullRefresh] Wiadomości: ${msgs.length}`);
+      }
+    } catch (err) { console.error(`[FullRefresh] Wiadomości błąd: ${err.message}`); }
+
+    try {
+      const pays = await runPythonScript("payment_checker.py", 300000); // wszystkie
+      if (Array.isArray(pays)) {
+        paymentsCache = pays;
+        await saveCache("payments", pays);
+        console.log(`[FullRefresh] Płatności szkoła: ${pays.length}`);
+      }
+    } catch (err) { console.error(`[FullRefresh] Płatności szkoła błąd: ${err.message}`); }
+
+    try {
+      const pre = await runPythonScript("payment_checker_preschool.py", 300000); // wszystkie
+      if (Array.isArray(pre)) {
+        preschoolCache = pre;
+        await saveCache("preschool", pre);
+        console.log(`[FullRefresh] Płatności przedszkole: ${pre.length}`);
+      }
+    } catch (err) { console.error(`[FullRefresh] Płatności przedszkole błąd: ${err.message}`); }
+
+    try {
+      const leap = await runPythonScript("leapmotor_checker.py", 300000); // wszystkie
+      if (Array.isArray(leap)) {
+        leapmotorCache = leap;
+        await saveCache("leapmotor", leap);
+        console.log(`[FullRefresh] Leapmotor: ${leap.length} sesji`);
+      }
+    } catch (err) { console.error(`[FullRefresh] Leapmotor błąd: ${err.message}`); }
+
+    console.log("[FullRefresh] ✅ Gotowe! Wszystkie dane zapisane w MongoDB.");
+  })();
+});
+
 // ── Leapmotor ─────────────────────────────────────────────
 app.get("/api/leapmotor/sessions", authenticateToken, (req, res) => {
   res.json(leapmotorCache);
