@@ -105,12 +105,29 @@ def fetch_leapmotor_emails():
         mail.select("INBOX")
         print("[Leapmotor] Zalogowano.", file=sys.stderr)
 
-        # Zakres dat
+        # Zbierz ID maili z różnych kryteriów
+        all_mail_ids = set()
+        since_suffix = ""
         if SINCE_DAYS:
             since_date = (datetime.now() - timedelta(days=SINCE_DAYS)).strftime("%d-%b-%Y")
-            criteria = f'FROM "{LEAPMOTOR_SENDER}" SINCE {since_date}'
+            since_suffix = f" SINCE {since_date}"
+            print(f"[Leapmotor] Szukam od {since_date}", file=sys.stderr)
         else:
-            criteria = f'FROM "{LEAPMOTOR_SENDER}"'
+            print("[Leapmotor] Szukam wszystkich maili Leapmotor", file=sys.stderr)
+
+        for criteria in [
+            f'FROM "{LEAPMOTOR_SENDER}"{since_suffix}',
+            f'FROM "leapmotor-international"{since_suffix}',
+            f'FROM "leapmotor"{since_suffix}',
+        ]:
+            try:
+                status, data = mail.search(None, criteria)
+                if status == "OK" and data[0]:
+                    ids = data[0].split()
+                    all_mail_ids.update(ids)
+                    print(f"[Leapmotor] '{criteria}': {len(ids)} maili", file=sys.stderr)
+            except Exception as e:
+                print(f"[Leapmotor] Błąd kryterium: {e}", file=sys.stderr)
 
         if not all_mail_ids:
             print("[Leapmotor] Brak wyników.", file=sys.stderr)
