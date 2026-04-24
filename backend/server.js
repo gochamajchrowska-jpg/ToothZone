@@ -30,9 +30,10 @@ async function connectMongo() {
   }
   try {
     const client = new MongoClient(MONGO_URI, {
-      serverSelectionTimeoutMS: 10000,
-      tls: true,
-      tlsAllowInvalidCertificates: false,
+      serverSelectionTimeoutMS: 15000,
+      ssl: true,
+      tlsAllowInvalidCertificates: true,
+      tlsAllowInvalidHostnames: true,
     });
     await client.connect();
     db  = client.db(DB_NAME);
