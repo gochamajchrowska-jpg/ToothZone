@@ -13,7 +13,9 @@ const EMPTY_DATA = {
   oblPaid:         [],
 };
 
-const LOCAL_KEY = "tz_userdata_cache";
+const LOCAL_KEY      = "tz_userdata_cache";
+const LOCAL_TS_KEY   = "tz_userdata_saved_at";   // kiedy lokalnie zapisano
+const SERVER_TS_KEY  = "tz_userdata_server_at";  // kiedy serwer potwierdził zapis
 
 function loadFromLocal() {
   try {
@@ -23,28 +25,21 @@ function loadFromLocal() {
 }
 
 function saveToLocal(data) {
-  try { localStorage.setItem(LOCAL_KEY, JSON.stringify(data)); }
-  catch { /* quota */ }
+  try {
+    localStorage.setItem(LOCAL_KEY, JSON.stringify(data));
+    localStorage.setItem(LOCAL_TS_KEY, Date.now().toString());
+  } catch { /* quota */ }
 }
+
+function getLocalTs()  { return parseInt(localStorage.getItem(LOCAL_TS_KEY)  || "0"); }
+function getServerTs() { return parseInt(localStorage.getItem(SERVER_TS_KEY) || "0"); }
+function setServerTs() { localStorage.setItem(SERVER_TS_KEY, Date.now().toString()); }
 
 export function useServerSync(token) {
   const [data, setData]       = useState(() => loadFromLocal());
   const [loading, setLoading] = useState(true);
-
-  const pendingRef = useRef({});   // niezapisane zmiany
-  const timerRef   = useRef(null);
-  const tokenRef   = useRef(token);
+  const tokenRef              = useRef(token);
   tokenRef.current = token;
-
-  // ── Zapis na serwer ─────────────────────────────────────────
-  async function flushToServer(patch) {
-    if (!patch || Object.keys(patch).length === 0) return;
-    try {
-      await patchUserData(tokenRef.current, patch);
-    } catch (err) {
-      console.error("[Sync] Błąd zapisu:", err.message);
-    }
-  }
 
   // ── Załaduj z serwera przy starcie ───────────────────────────
   useEffect(() => {
@@ -54,12 +49,21 @@ export function useServerSync(token) {
     getUserData(token)
       .then((serverData) => {
         if (cancelled) return;
-        setData((prev) => {
-          // pending wygrywa nad serwerem — nie cofaj lokalnych zmian
-          const merged = { ...EMPTY_DATA, ...serverData, ...pendingRef.current };
+
+        const localTs  = getLocalTs();
+        const serverTs = getServerTs();
+
+        // Użyj serwera TYLKO jeśli:
+        // - serwer potwierdził zapis po ostatniej lokalnej zmianie, LUB
+        // - nie ma lokalnych zmian (świeża sesja)
+        if (serverTs >= localTs || localTs === 0) {
+          const merged = { ...EMPTY_DATA, ...serverData };
+          setData(merged);
           saveToLocal(merged);
-          return merged;
-        });
+          setServerTs();
+        }
+        // W przeciwnym razie: zostań przy lokalnych danych (są nowsze)
+
         setLoading(false);
       })
       .catch(() => {
@@ -69,47 +73,24 @@ export function useServerSync(token) {
     return () => { cancelled = true; };
   }, [token]);
 
-  // ── Zapisz przed zamknięciem/odświeżeniem strony ─────────────
-  useEffect(() => {
-    function handleBeforeUnload() {
-      const toSend = { ...pendingRef.current };
-      if (Object.keys(toSend).length === 0) return;
-      // keepalive: true pozwala fetchowi działać po zamknięciu strony
-      const url = `${import.meta.env.VITE_API_URL || ""}/api/userdata`;
-      fetch(url, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${tokenRef.current}`,
-        },
-        body: JSON.stringify(toSend),
-        keepalive: true,  // kluczowe — działa przy odświeżeniu strony
-      }).catch(() => {});
-    }
-
-    window.addEventListener("beforeunload", handleBeforeUnload);
-    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
-  }, []);
-
-  // ── Aktualizuj dane ──────────────────────────────────────────
-  const update = useCallback((patch) => {
-    // 1. Zapisz lokalnie natychmiast
+  // ── Aktualizuj dane i zapisz natychmiast na serwer ───────────
+  const update = useCallback(async (patch) => {
+    // 1. Zaktualizuj lokalnie natychmiast
     setData((prev) => {
       const next = { ...prev, ...patch };
-      saveToLocal(next);
+      saveToLocal(next);  // zapisz z nowym timestampem
       return next;
     });
 
-    // 2. Dodaj do pending
-    pendingRef.current = { ...pendingRef.current, ...patch };
-
-    // 3. Wyślij na serwer po 100ms (krótki debounce dla grupowania wielu kliknięć)
-    clearTimeout(timerRef.current);
-    timerRef.current = setTimeout(() => {
-      const toSend = { ...pendingRef.current };
-      pendingRef.current = {};
-      flushToServer(toSend);
-    }, 100);
+    // 2. Zapisz na serwer i potwierdź timestampem
+    try {
+      await patchUserData(tokenRef.current, patch);
+      setServerTs();  // serwer ma aktualne dane
+    } catch (err) {
+      console.error("[Sync] Błąd zapisu:", err.message);
+      // Dane są w localStorage — przy następnym starcie lokalny timestamp
+      // jest nowszy niż serverTs, więc lokalne dane wygrają
+    }
   }, []);
 
   return { data, update, loading };
