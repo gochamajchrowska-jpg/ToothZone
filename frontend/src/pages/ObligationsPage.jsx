@@ -557,7 +557,7 @@ export default function ObligationsPage() {
                     </td>
                     <td className="pay-amount">{pay.kwota}</td>
                     <td className="pay-deadline">{pay.termin}</td>
-                    <td>
+                    <td data-termin={pay.termin && pay.termin !== "—" ? `Termin: ${pay.termin}` : ""}>
                       <span className={`pay-badge pay-badge--${overdue ? "overdue" : "ok"}`}>
                         {overdue ? "Po terminie" : "W terminie"}
                       </span>
