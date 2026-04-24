@@ -259,3 +259,82 @@ app.listen(PORT, () => {
   // Co godzinę sprawdzaj nowe dane
   setInterval(hourlyRefresh, 60 * 60 * 1000);
 });
+
+// ── Dane użytkownika (ręczne płatności, zapłacone, zobowiązania) ──
+// Przechowywane w pamięci + persystowane do pliku JSON na dysku
+// (plik przetrwa restart jeśli Railway Volume jest zamontowane w /data)
+
+const DATA_FILE = process.env.DB_PATH
+  ? process.env.DB_PATH.replace("users.db", "userdata.json")
+  : path.join(__dirname, "userdata.json");
+
+// Struktura danych użytkownika
+let userData = {
+  schoolManual:     [],   // ręczne płatności szkoła
+  preschoolManual:  [],   // ręczne płatności przedszkole
+  schoolPaid:       [],   // zapłacone szkoła (array of IDs)
+  preschoolPaid:    [],   // zapłacone przedszkole
+  oblManual:        [],   // ręczne zobowiązania
+  oblSchedules:     [],   // harmonogramy
+  oblPaid:          [],   // zapłacone zobowiązania
+};
+
+// Załaduj dane z pliku jeśli istnieje
+function loadUserData() {
+  try {
+    if (fs.existsSync(DATA_FILE)) {
+      const raw = JSON.parse(fs.readFileSync(DATA_FILE, "utf-8"));
+      userData = { ...userData, ...raw };
+      console.log("[UserData] Załadowano dane użytkownika z pliku.");
+    }
+  } catch (err) {
+    console.error("[UserData] Błąd ładowania:", err.message);
+  }
+}
+
+// Zapisz dane do pliku (debounced — max raz na 2 sekundy)
+let saveTimer = null;
+function saveUserData() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    try {
+      fs.writeFileSync(DATA_FILE, JSON.stringify(userData, null, 2));
+    } catch (err) {
+      console.error("[UserData] Błąd zapisu:", err.message);
+    }
+  }, 2000);
+}
+
+loadUserData();
+
+// ── GET /api/userdata ─────────────────────────────────────────
+// Zwraca wszystkie dane użytkownika naraz
+app.get("/api/userdata", authenticateToken, (req, res) => {
+  res.json(userData);
+});
+
+// ── POST /api/userdata ────────────────────────────────────────
+// Zapisuje wszystkie dane użytkownika naraz (pełny replace)
+app.post("/api/userdata", authenticateToken, (req, res) => {
+  const allowed = ["schoolManual","preschoolManual","schoolPaid","preschoolPaid","oblManual","oblSchedules","oblPaid"];
+  for (const key of allowed) {
+    if (req.body[key] !== undefined) {
+      userData[key] = req.body[key];
+    }
+  }
+  saveUserData();
+  res.json({ ok: true, userData });
+});
+
+// ── PATCH /api/userdata ───────────────────────────────────────
+// Aktualizuje tylko wskazane klucze (merge)
+app.patch("/api/userdata", authenticateToken, (req, res) => {
+  const allowed = ["schoolManual","preschoolManual","schoolPaid","preschoolPaid","oblManual","oblSchedules","oblPaid"];
+  for (const key of allowed) {
+    if (req.body[key] !== undefined) {
+      userData[key] = req.body[key];
+    }
+  }
+  saveUserData();
+  res.json({ ok: true });
+});

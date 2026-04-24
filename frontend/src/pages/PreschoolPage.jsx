@@ -12,9 +12,7 @@ import EventModal   from "../components/payments/EventModal";
 import { getPreschoolPayments, refreshPreschoolPayments } from "../api";
 import { parseDate, isOverdue } from "../utils/dates";
 import { getSchoolYear, parseAmount, getPaymentStatus } from "../utils/payments";
-import { useLocalStorage } from "../hooks/useLocalStorage";
-import { usePaidSet } from "../hooks/usePaidSet";
-import { STORAGE_KEYS } from "../utils/storage";
+import { useServerSync } from "../hooks/useServerSync";
 import "../styles/preschool.css";
 
 export default function PreschoolPage() {
@@ -28,17 +26,31 @@ export default function PreschoolPage() {
   const [payError,      setPayError]      = useState("");
   const [payPage,       setPayPage]       = useState(1);
 
-  // Płatności ręczne
-  const [manualPayments, setManualPayments] = useLocalStorage(STORAGE_KEYS.preschoolManual, []);
-  const [showPayModal,   setShowPayModal]   = useState(false);
-  const [editPayment,    setEditPayment]    = useState(null);
+  // Sync z serwerem
+  const { data: syncData, update: syncUpdate, loading: syncLoading } = useServerSync(token);
+  const manualPayments = syncData?.preschoolManual  || [];
+  const paidIdsArr     = syncData?.preschoolPaid    || [];
+  const events         = syncData?.preschoolEvents  || [];
+  const paidIds        = new Set(paidIdsArr);
 
-  // Zapłacone
-  const { paidIds, toggle: togglePaid } = usePaidSet(STORAGE_KEYS.preschoolPaid);
+  const [showPayModal, setShowPayModal] = useState(false);
+  const [editPayment,  setEditPayment]  = useState(null);
+  const [showEvModal,  setShowEvModal]  = useState(false);
 
-  // Własne wydarzenia
-  const [events,      setEvents]      = useLocalStorage(STORAGE_KEYS.preschoolEvents, []);
-  const [showEvModal, setShowEvModal] = useState(false);
+  function setManualPayments(updater) {
+    const next = typeof updater === "function" ? updater(manualPayments) : updater;
+    syncUpdate({ preschoolManual: next });
+  }
+  function togglePaid(id) {
+    const next = paidIdsArr.includes(id)
+      ? paidIdsArr.filter((x) => x !== id)
+      : [...paidIdsArr, id];
+    syncUpdate({ preschoolPaid: next });
+  }
+  function setEvents(updater) {
+    const next = typeof updater === "function" ? updater(events) : updater;
+    syncUpdate({ preschoolEvents: next });
+  }
 
   // ── Ładowanie ────────────────────────────────────────────────
   useEffect(() => {

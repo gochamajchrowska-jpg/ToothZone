@@ -12,9 +12,7 @@ import EventModal   from "../components/payments/EventModal";
 import { getSchoolMessages, refreshSchoolMessages, getSchoolPayments, refreshSchoolPayments } from "../api";
 import { parseDate, isOverdue } from "../utils/dates";
 import { getSchoolYear, parseAmount, getPaymentStatus } from "../utils/payments";
-import { useLocalStorage } from "../hooks/useLocalStorage";
-import { usePaidSet } from "../hooks/usePaidSet";
-import { STORAGE_KEYS } from "../utils/storage";
+import { useServerSync } from "../hooks/useServerSync";
 import "../styles/school.css";
 
 const MSG_PAGE_SIZE = 10;
@@ -49,17 +47,31 @@ export default function SchoolPage() {
   const [payError,      setPayError]      = useState("");
   const [payPage,       setPayPage]       = useState(1);
 
-  // Płatności ręczne
-  const [manualPayments, setManualPayments] = useLocalStorage(STORAGE_KEYS.schoolManual, []);
-  const [showPayModal,   setShowPayModal]   = useState(false);
-  const [editPayment,    setEditPayment]    = useState(null);
+  // Sync z serwerem — ręczne płatności, zapłacone, wydarzenia
+  const { data: syncData, update: syncUpdate, loading: syncLoading } = useServerSync(token);
+  const manualPayments = syncData?.schoolManual  || [];
+  const paidIdsArr     = syncData?.schoolPaid    || [];
+  const events         = syncData?.schoolEvents  || [];
+  const paidIds        = new Set(paidIdsArr);
 
-  // Zapłacone
-  const { paidIds, toggle: togglePaid } = usePaidSet(STORAGE_KEYS.schoolPaid);
+  const [showPayModal, setShowPayModal] = useState(false);
+  const [editPayment,  setEditPayment]  = useState(null);
+  const [showEvModal,  setShowEvModal]  = useState(false);
 
-  // Własne wydarzenia
-  const [events,    setEvents]    = useLocalStorage(STORAGE_KEYS.schoolEvents, []);
-  const [showEvModal, setShowEvModal] = useState(false);
+  function setManualPayments(updater) {
+    const next = typeof updater === "function" ? updater(manualPayments) : updater;
+    syncUpdate({ schoolManual: next });
+  }
+  function togglePaid(id) {
+    const next = paidIdsArr.includes(id)
+      ? paidIdsArr.filter((x) => x !== id)
+      : [...paidIdsArr, id];
+    syncUpdate({ schoolPaid: next });
+  }
+  function setEvents(updater) {
+    const next = typeof updater === "function" ? updater(events) : updater;
+    syncUpdate({ schoolEvents: next });
+  }
 
   // ── Ładowanie danych ────────────────────────────────────────
   useEffect(() => {

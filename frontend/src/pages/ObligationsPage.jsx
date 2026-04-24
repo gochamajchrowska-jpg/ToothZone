@@ -9,12 +9,8 @@ import { useAuth } from "../App";
 import { getSchoolPayments, getPreschoolPayments } from "../api";
 import { parseDate, formatDate, toIsoDate, todayIso, isOverdue } from "../utils/dates";
 import { parseAmount } from "../utils/payments";
-import { useLocalStorage } from "../hooks/useLocalStorage";
-import { STORAGE_KEYS } from "../utils/storage";
+import { useServerSync } from "../hooks/useServerSync";
 import "../styles/obligations.css";
-
-const OBL_PAID_KEY     = STORAGE_KEYS.schoolPaid;
-const OBL_PRE_PAID_KEY = STORAGE_KEYS.preschoolPaid;
 
 function addMonths(date, n) {
   const d = new Date(date);
@@ -252,40 +248,27 @@ function ViewScheduleModal({ schedule, onClose, onEdit }) {
 export default function ObligationsPage() {
   const { token } = useAuth();
 
-  // ── Płatności z innych zakładek ───────────────────────────
-  const [schoolPay,   setSchoolPay]   = useState([]);
+  // ── Płatności z backendu ──────────────────────────────────
+  const [schoolPay,    setSchoolPay]    = useState([]);
   const [preschoolPay, setPreschoolPay] = useState([]);
 
-  // ── Ręczne zobowiązania ───────────────────────────────────
-  const [manuals, setManuals] = useLocalStorage(STORAGE_KEYS.oblManual, []);
+  // ── Sync z serwerem (cross-device) ───────────────────────
+  const { data: syncData, update: syncUpdate } = useServerSync(token);
 
-  // ── Harmonogramy ──────────────────────────────────────────
-  const [schedules, setSchedules] = useLocalStorage(STORAGE_KEYS.oblSchedule, []);
+  const manuals   = syncData?.oblManual    || [];
+  const schedules = syncData?.oblSchedules || [];
+  const schoolPaidIds    = new Set(syncData?.schoolPaid    || []);
+  const preschoolPaidIds = new Set(syncData?.preschoolPaid || []);
+  const oblPaidIds       = new Set(syncData?.oblPaid       || []);
 
-  // ── Zapłacone IDs — odczytywane świeżo przy każdym renderze ──
-  // Osobne zbiory dla szkoły i przedszkola (te same ID np. "marzec 2026")
-  // Używamy stanu do wymuszenia re-renderu po kliknięciu Zapłać
-  const [paidVersion, setPaidVersion] = useState(0);
-
-  const schoolPaidIds = useMemo(() => {
-    try { return new Set(JSON.parse(localStorage.getItem(OBL_PAID_KEY) || "[]")); }
-    catch { return new Set(); }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [paidVersion]);
-
-  const preschoolPaidIds = useMemo(() => {
-    try { return new Set(JSON.parse(localStorage.getItem(OBL_PRE_PAID_KEY) || "[]")); }
-    catch { return new Set(); }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [paidVersion]);
-
-  const oblPaidIds = useMemo(() => {
-    try { return new Set(JSON.parse(localStorage.getItem("tz_obl_paid") || "[]")); }
-    catch { return new Set(); }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [paidVersion]);
-
-
+  function setManuals(updater) {
+    const next = typeof updater === "function" ? updater(manuals) : updater;
+    syncUpdate({ oblManual: next });
+  }
+  function setSchedules(updater) {
+    const next = typeof updater === "function" ? updater(schedules) : updater;
+    syncUpdate({ oblSchedules: next });
+  }
 
   // ── Modals ────────────────────────────────────────────────
   const [showAddModal,      setShowAddModal]      = useState(false);
@@ -346,15 +329,9 @@ export default function ObligationsPage() {
 
   // ── Połącz wszystkie płatności ────────────────────────────
   const allPayments = useMemo(() => {
-    // Odczytaj ręczne płatności świeżo (paidVersion zapewnia aktualność)
-    const schoolManual    = (() => {
-      try { return JSON.parse(localStorage.getItem("tz_school_manual_payments") || "[]"); }
-      catch { return []; }
-    })();
-    const preschoolManual = (() => {
-      try { return JSON.parse(localStorage.getItem("tz_preschool_manual_payments") || "[]"); }
-      catch { return []; }
-    })();
+    // Ręczne płatności z serwera (wspólne dla wszystkich urządzeń)
+    const schoolManual    = syncData?.schoolManual    || [];
+    const preschoolManual = syncData?.preschoolManual || [];
 
     const fromSchool = schoolPay.map((p) => ({
       ...p, source: "school", name: `Szkoła — ${p.miesiac}`,
@@ -381,7 +358,7 @@ export default function ObligationsPage() {
       ...fromPreschool, ...fromPreschoolManual,
       ...fromManual, ...generatedEntries
     ];
-  }, [schoolPay, preschoolPay, manuals, generatedEntries, paidVersion]);
+  }, [schoolPay, preschoolPay, manuals, generatedEntries, syncData]);
 
   // ── Filtruj niezapłacone ─────────────────────────────────────
   // Dla płatności ze szkoły/przedszkola stosujemy dwa kryteria:
@@ -415,22 +392,22 @@ export default function ObligationsPage() {
   }, [allPayments, schoolPaidIds, preschoolPaidIds, oblPaidIds]);
 
   function togglePaid(id, source) {
-    // Zapisz do właściwego klucza localStorage
     if (source === "school") {
-      const current = new Set(JSON.parse(localStorage.getItem(OBL_PAID_KEY) || "[]"));
-      current.has(id) ? current.delete(id) : current.add(id);
-      localStorage.setItem(OBL_PAID_KEY, JSON.stringify([...current]));
+      const next = schoolPaidIds.has(id)
+        ? [...schoolPaidIds].filter(x => x !== id)
+        : [...schoolPaidIds, id];
+      syncUpdate({ schoolPaid: next });
     } else if (source === "preschool") {
-      const current = new Set(JSON.parse(localStorage.getItem(OBL_PRE_PAID_KEY) || "[]"));
-      current.has(id) ? current.delete(id) : current.add(id);
-      localStorage.setItem(OBL_PRE_PAID_KEY, JSON.stringify([...current]));
+      const next = preschoolPaidIds.has(id)
+        ? [...preschoolPaidIds].filter(x => x !== id)
+        : [...preschoolPaidIds, id];
+      syncUpdate({ preschoolPaid: next });
     } else {
-      const current = new Set(JSON.parse(localStorage.getItem("tz_obl_paid") || "[]"));
-      current.has(id) ? current.delete(id) : current.add(id);
-      localStorage.setItem("tz_obl_paid", JSON.stringify([...current]));
+      const next = oblPaidIds.has(id)
+        ? [...oblPaidIds].filter(x => x !== id)
+        : [...oblPaidIds, id];
+      syncUpdate({ oblPaid: next });
     }
-    // Wymusz re-render żeby listy się zaktualizowały
-    setPaidVersion(v => v + 1);
   }
 
   function handleSaveManual(obl) {

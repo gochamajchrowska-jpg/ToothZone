@@ -87,3 +87,20 @@ export async function refreshPreschoolPayments(token) {
   });
   return handleResponse(res);
 }
+
+// ── Dane użytkownika (sync między urządzeniami) ───────────────
+export async function getUserData(token) {
+  const res = await fetch(`${BASE_URL}/api/userdata`, {
+    headers: authHeaders(token),
+  });
+  return handleResponse(res);
+}
+
+export async function patchUserData(token, patch) {
+  const res = await fetch(`${BASE_URL}/api/userdata`, {
+    method: "PATCH",
+    headers: authHeaders(token),
+    body: JSON.stringify(patch),
+  });
+  return handleResponse(res);
+}
