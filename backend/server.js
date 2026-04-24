@@ -91,6 +91,31 @@ async function saveUserData(patch) {
   }
 }
 
+// ── Cache e-mail w MongoDB ────────────────────────────────────
+async function loadCache(key) {
+  if (!cacheCol) return null;
+  try {
+    const doc = await cacheCol.findOne({ _id: key });
+    return doc ? doc.data : null;
+  } catch (err) {
+    console.error(`[Cache] Błąd odczytu ${key}:`, err.message);
+    return null;
+  }
+}
+
+async function saveCache(key, data) {
+  if (!cacheCol) return;
+  try {
+    await cacheCol.updateOne(
+      { _id: key },
+      { $set: { data, updatedAt: new Date() } },
+      { upsert: true }
+    );
+  } catch (err) {
+    console.error(`[Cache] Błąd zapisu ${key}:`, err.message);
+  }
+}
+
 // ── Auth ──────────────────────────────────────────────────────
 const APP_EMAIL    = process.env.APP_EMAIL    || "";
 const APP_PASSWORD = process.env.APP_PASSWORD || "";
@@ -247,31 +272,6 @@ const ALLOWED_KEYS = [
 
 app.get("/api/userdata", authenticateToken, async (req, res) => {
   const data = await loadUserData();
-
-// ── Cache e-mail w MongoDB ────────────────────────────────────
-async function loadCache(key) {
-  if (!cacheCol) return null;
-  try {
-    const doc = await cacheCol.findOne({ _id: key });
-    return doc ? doc.data : null;
-  } catch (err) {
-    console.error(`[Cache] Błąd odczytu ${key}:`, err.message);
-    return null;
-  }
-}
-
-async function saveCache(key, data) {
-  if (!cacheCol) return;
-  try {
-    await cacheCol.updateOne(
-      { _id: key },
-      { $set: { data, updatedAt: new Date() } },
-      { upsert: true }
-    );
-  } catch (err) {
-    console.error(`[Cache] Błąd zapisu ${key}:`, err.message);
-  }
-}
   res.json(data);
 });
 
@@ -292,7 +292,7 @@ app.get("/api/leapmotor/sessions", authenticateToken, (req, res) => {
 });
 
 app.post("/api/leapmotor/sessions/refresh", authenticateToken, (req, res) => {
-  runPythonScript("leapmotor_checker.py", 180000)
+  runPythonScript("leapmotor_checker.py", 180000, 365)
     .then((data) => {
       if (Array.isArray(data)) leapmotorCache = data;
       res.json(leapmotorCache);
@@ -334,7 +334,7 @@ async function refreshAllInBackground() {
 
   // Leapmotor — wszystkie
   try {
-    const data = await runPythonScript("leapmotor_checker.py", 180000);
+    const data = await runPythonScript("leapmotor_checker.py", 180000, 365);
     if (Array.isArray(data)) {
       leapmotorCache = data;
       await saveCache("leapmotor", leapmotorCache);
