@@ -571,3 +571,46 @@
   }
   .subpage-title { font-size: 1.3rem; }
 }
+
+/* ── Rozszerzone karty wydarzeń ─────────────────────────────── */
+.event-card {
+  position: relative;
+}
+.event-card--past {
+  opacity: 0.55;
+  filter: grayscale(30%);
+}
+.event-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.event-note {
+  font-size: 0.75rem;
+  color: var(--clr-text-muted);
+  margin-top: 2px;
+  font-style: italic;
+}
+.dash-section-subtitle {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--clr-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin: 20px 0 10px;
+}
+.events-list--past {
+  opacity: 0.7;
+}
+
+/* Mobile */
+@media (max-width: 640px) {
+  .event-card-actions { gap: 4px; }
+  .event-card-actions .btn-view-schedule,
+  .event-card-actions .btn-delete {
+    padding: 4px 8px !important;
+    font-size: 0.8rem !important;
+    min-height: 32px !important;
+  }
+}

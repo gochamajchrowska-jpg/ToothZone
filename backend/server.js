@@ -237,7 +237,7 @@ app.post("/api/preschool/payments/refresh", authenticateToken, (req, res) => {
 const ALLOWED_KEYS = [
   "schoolManual","preschoolManual",
   "schoolPaid","preschoolPaid",
-  "schoolEvents","preschoolEvents",
+  "schoolEvents","preschoolEvents","dashEvents",
   "oblManual","oblSchedules","oblPaid",
 ];
 
