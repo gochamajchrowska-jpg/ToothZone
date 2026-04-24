@@ -20,8 +20,9 @@ const MONGO_URI = process.env.MONGO_URI || "";
 const DB_NAME   = "toothzone";
 const COL_NAME  = "userdata";
 
-let db  = null;
-let col = null;
+let db       = null;
+let col      = null;   // userdata
+let cacheCol = null;   // email cache (wiadomości, płatności)
 
 async function connectMongo() {
   if (!MONGO_URI) {
@@ -43,6 +44,8 @@ async function connectMongo() {
       { $setOnInsert: EMPTY_USERDATA() },
       { upsert: true }
     );
+    // Kolekcja cache dla danych e-mail
+    cacheCol = db.collection("emailcache");
     console.log("[MongoDB] Połączono z Atlas ✅");
   } catch (err) {
     console.error("[MongoDB] Błąd połączenia:", err.message);
@@ -244,6 +247,31 @@ const ALLOWED_KEYS = [
 
 app.get("/api/userdata", authenticateToken, async (req, res) => {
   const data = await loadUserData();
+
+// ── Cache e-mail w MongoDB ────────────────────────────────────
+async function loadCache(key) {
+  if (!cacheCol) return null;
+  try {
+    const doc = await cacheCol.findOne({ _id: key });
+    return doc ? doc.data : null;
+  } catch (err) {
+    console.error(`[Cache] Błąd odczytu ${key}:`, err.message);
+    return null;
+  }
+}
+
+async function saveCache(key, data) {
+  if (!cacheCol) return;
+  try {
+    await cacheCol.updateOne(
+      { _id: key },
+      { $set: { data, updatedAt: new Date() } },
+      { upsert: true }
+    );
+  } catch (err) {
+    console.error(`[Cache] Błąd zapisu ${key}:`, err.message);
+  }
+}
   res.json(data);
 });
 
@@ -272,39 +300,55 @@ app.post("/api/leapmotor/sessions/refresh", authenticateToken, (req, res) => {
     .catch((err) => res.status(500).json({ error: err.message }));
 });
 
+// ── Odświeżanie w tle ────────────────────────────────────────
+async function refreshAllInBackground() {
+  // Wiadomości — ostatnie 2 dni
+  try {
+    const data = await runPythonScript("email_checker.py", 120000, 2);
+    if (Array.isArray(data) && data.length > 0) {
+      messagesCache = mergeMessages(messagesCache, data);
+      await saveCache("messages", messagesCache);
+      console.log(`[Background] Wiadomości: ${messagesCache.length} (nowych: ${data.length})`);
+    }
+  } catch (err) { console.error(`[Background] Wiadomości błąd: ${err.message}`); }
+
+  // Płatności szkoła — ostatnie 35 dni
+  try {
+    const data = await runPythonScript("payment_checker.py", 120000, 35);
+    if (Array.isArray(data) && data.length > 0) {
+      paymentsCache = mergePayments(paymentsCache, data);
+      await saveCache("payments", paymentsCache);
+      console.log(`[Background] Płatności szkoła: ${paymentsCache.length}`);
+    }
+  } catch (err) { console.error(`[Background] Płatności szkoła błąd: ${err.message}`); }
+
+  // Płatności przedszkole — ostatnie 35 dni
+  try {
+    const data = await runPythonScript("payment_checker_preschool.py", 120000, 35);
+    if (Array.isArray(data) && data.length > 0) {
+      preschoolCache = mergePayments(preschoolCache, data);
+      await saveCache("preschool", preschoolCache);
+      console.log(`[Background] Płatności przedszkole: ${preschoolCache.length}`);
+    }
+  } catch (err) { console.error(`[Background] Płatności przedszkole błąd: ${err.message}`); }
+
+  // Leapmotor — wszystkie
+  try {
+    const data = await runPythonScript("leapmotor_checker.py", 180000);
+    if (Array.isArray(data)) {
+      leapmotorCache = data;
+      await saveCache("leapmotor", leapmotorCache);
+      console.log(`[Background] Leapmotor: ${leapmotorCache.length} sesji`);
+    }
+  } catch (err) { console.error(`[Background] Leapmotor błąd: ${err.message}`); }
+}
+
 // ── Scheduler ─────────────────────────────────────────────────
 function hourlyRefresh() {
   console.log("[Scheduler] Odświeżam dane...");
 
-  runPythonScript("email_checker.py", 120000, 2)
-    .then((data) => {
-      if (!Array.isArray(data) || data.length === 0) return;
-      const before = messagesCache.length;
-      messagesCache = mergeMessages(messagesCache, data);
-      const added = messagesCache.length - before;
-      if (added > 0) console.log(`[Scheduler] +${added} nowych wiadomości.`);
-    })
-    .catch((err) => console.error(`[Scheduler] Wiadomości błąd: ${err.message}`));
-
-  runPythonScript("payment_checker.py", 120000, 35)
-    .then((data) => {
-      if (!Array.isArray(data) || data.length === 0) return;
-      const before = paymentsCache.length;
-      paymentsCache = mergePayments(paymentsCache, data);
-      const added = paymentsCache.length - before;
-      if (added > 0) console.log(`[Scheduler] +${added} nowych płatności (szkoła).`);
-    })
-    .catch((err) => console.error(`[Scheduler] Płatności szkoła błąd: ${err.message}`));
-
-  runPythonScript("payment_checker_preschool.py", 120000, 35)
-    .then((data) => {
-      if (!Array.isArray(data) || data.length === 0) return;
-      const before = preschoolCache.length;
-      preschoolCache = mergePayments(preschoolCache, data);
-      const added = preschoolCache.length - before;
-      if (added > 0) console.log(`[Scheduler] +${added} nowych płatności (przedszkole).`);
-    })
-    .catch((err) => console.error(`[Scheduler] Płatności przedszkole błąd: ${err.message}`));
+  // Używaj refreshAllInBackground — zapisuje do MongoDB automatycznie
+  refreshAllInBackground().catch((err) => console.error(`[Scheduler] Błąd: ${err.message}`));
 }
 
 // ── Start ─────────────────────────────────────────────────────
@@ -314,40 +358,23 @@ async function start() {
   app.listen(PORT, () => {
     console.log(`🦷 Tooth Zone backend na http://localhost:${PORT}`);
 
-    console.log("[Startup] Ładuję wiadomości...");
-    runPythonScript("email_checker.py", 120000)
-      .then((data) => {
-        if (Array.isArray(data)) {
-          messagesCache = data;
-          console.log(`[Startup] Wiadomości: ${data.length}`);
-        }
-        console.log("[Startup] Ładuję płatności szkoła...");
-        return runPythonScript("payment_checker.py", 120000);
-      })
-      .then((data) => {
-        if (Array.isArray(data)) {
-          paymentsCache = data;
-          console.log(`[Startup] Płatności szkoła: ${data.length}`);
-        }
-        console.log("[Startup] Ładuję płatności przedszkole...");
-        return runPythonScript("payment_checker_preschool.py", 120000);
-      })
-      .then((data) => {
-        if (Array.isArray(data)) {
-          preschoolCache = data;
-          console.log(`[Startup] Płatności przedszkole: ${data.length}`);
-        }
-        console.log("[Startup] Wszystkie dane załadowane ✅");
-        // Ładuj sesje Leapmotor (ostatnie 90 dni)
-        return runPythonScript("leapmotor_checker.py", 180000);  // wszystkie sesje
-      })
-      .then((data) => {
-        if (Array.isArray(data)) {
-          leapmotorCache = data;
-          console.log(`[Startup] Leapmotor sesje: ${data.length}`);
-        }
-      })
-      .catch((err) => console.error(`[Startup] Błąd: ${err.message}`));
+    // Załaduj cache z MongoDB (natychmiastowo — bez IMAP)
+    Promise.all([
+      loadCache("messages"),
+      loadCache("payments"),
+      loadCache("preschool"),
+      loadCache("leapmotor"),
+    ]).then(([msgs, pays, pre, leap]) => {
+      if (msgs)  { messagesCache  = msgs;  console.log(`[Startup] Wiadomości z cache: ${msgs.length}`); }
+      if (pays)  { paymentsCache  = pays;  console.log(`[Startup] Płatności szkoła z cache: ${pays.length}`); }
+      if (pre)   { preschoolCache = pre;   console.log(`[Startup] Płatności przedszkole z cache: ${pre.length}`); }
+      if (leap)  { leapmotorCache = leap;  console.log(`[Startup] Leapmotor z cache: ${leap.length}`); }
+      console.log("[Startup] Cache załadowany ✅ — dane dostępne od razu");
+
+      // Odśwież dane z IMAP w tle (ostatnie 2 dni dla wiadomości, 35 dni dla płatności)
+      console.log("[Startup] Odświeżam dane w tle...");
+      refreshAllInBackground();
+    }).catch((err) => console.error(`[Startup] Błąd ładowania cache: ${err.message}`));
 
     setInterval(hourlyRefresh, 60 * 60 * 1000);
   });
