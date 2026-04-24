@@ -1,73 +1,88 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { getUserData, patchUserData } from "../api";
 
+// Domyślna pusta struktura — zapobiega null na starcie
+const EMPTY_DATA = {
+  schoolManual:    [],
+  preschoolManual: [],
+  schoolPaid:      [],
+  preschoolPaid:   [],
+  schoolEvents:    [],
+  preschoolEvents: [],
+  oblManual:       [],
+  oblSchedules:    [],
+  oblPaid:         [],
+};
+
+const LOCAL_KEY = "tz_userdata_cache";
+
+function loadFromLocal() {
+  try {
+    const cached = JSON.parse(localStorage.getItem(LOCAL_KEY) || "{}");
+    return { ...EMPTY_DATA, ...cached };
+  } catch { return { ...EMPTY_DATA }; }
+}
+
+function saveToLocal(data) {
+  try { localStorage.setItem(LOCAL_KEY, JSON.stringify(data)); }
+  catch { /* quota */ }
+}
+
 /**
- * Hook synchronizujący dane użytkownika z serwerem.
- * Dane ładowane przy starcie z serwera, zapisywane po każdej zmianie.
- * localStorage służy jako cache offline.
- *
- * @param {string} token - JWT token
- * @returns {{ data, update, loading }} 
+ * Synchronizuje dane użytkownika z serwerem Railway.
+ * - Przy starcie: ładuje z serwera (fallback: localStorage cache)
+ * - Po każdej zmianie: PATCH na serwer (debounced 800ms)
+ * - Dane dostępne natychmiast z cache, aktualizowane po odpowiedzi serwera
  */
 export function useServerSync(token) {
-  const [data, setData]       = useState(null);
+  // Zacznij od cache z localStorage — brak opóźnienia przy renderze
+  const [data, setData]       = useState(() => loadFromLocal());
   const [loading, setLoading] = useState(true);
   const saveTimerRef          = useRef(null);
+  const pendingPatch          = useRef({});
 
-  // Załaduj przy starcie
+  // Załaduj dane z serwera przy starcie
   useEffect(() => {
     if (!token) return;
     let cancelled = false;
 
     getUserData(token)
       .then((serverData) => {
-        if (!cancelled) {
-          setData(serverData);
-          setLoading(false);
-        }
+        if (cancelled) return;
+        // Serwer jest źródłem prawdy — nadpisz cache
+        const merged = { ...EMPTY_DATA, ...serverData };
+        setData(merged);
+        saveToLocal(merged);
+        setLoading(false);
       })
       .catch(() => {
-        // Fallback: odczytaj z localStorage
-        if (!cancelled) {
-          const local = loadFromLocal();
-          setData(local);
-          setLoading(false);
-        }
+        // Serwer niedostępny — zostań przy cache
+        if (!cancelled) setLoading(false);
       });
 
     return () => { cancelled = true; };
   }, [token]);
 
-  // Aktualizuj dane i zapisz na serwer (debounced 1s)
+  // Aktualizuj dane lokalnie i synchronizuj z serwerem
   const update = useCallback((patch) => {
     setData((prev) => {
       const next = { ...prev, ...patch };
       saveToLocal(next);
 
-      // Debounced save to server
+      // Zbieraj zmiany i wysyłaj razem (debounced)
+      pendingPatch.current = { ...pendingPatch.current, ...patch };
       clearTimeout(saveTimerRef.current);
       saveTimerRef.current = setTimeout(() => {
-        patchUserData(token, patch).catch((err) =>
-          console.error("[Sync] Błąd zapisu na serwer:", err.message)
+        const toSend = { ...pendingPatch.current };
+        pendingPatch.current = {};
+        patchUserData(token, toSend).catch((err) =>
+          console.error("[Sync] Błąd zapisu:", err.message)
         );
-      }, 1000);
+      }, 800);
 
       return next;
     });
   }, [token]);
 
   return { data, update, loading };
-}
-
-// ── Helpers localStorage (fallback offline) ───────────────────
-const LOCAL_KEY = "tz_userdata_cache";
-
-function loadFromLocal() {
-  try { return JSON.parse(localStorage.getItem(LOCAL_KEY) || "{}"); }
-  catch { return {}; }
-}
-
-function saveToLocal(data) {
-  try { localStorage.setItem(LOCAL_KEY, JSON.stringify(data)); }
-  catch { /* quota */ }
 }

@@ -274,6 +274,8 @@ let userData = {
   preschoolManual:  [],   // ręczne płatności przedszkole
   schoolPaid:       [],   // zapłacone szkoła (array of IDs)
   preschoolPaid:    [],   // zapłacone przedszkole
+  schoolEvents:     [],   // własne wydarzenia szkolne
+  preschoolEvents:  [],   // własne wydarzenia przedszkolne
   oblManual:        [],   // ręczne zobowiązania
   oblSchedules:     [],   // harmonogramy
   oblPaid:          [],   // zapłacone zobowiązania
@@ -316,7 +318,7 @@ app.get("/api/userdata", authenticateToken, (req, res) => {
 // ── POST /api/userdata ────────────────────────────────────────
 // Zapisuje wszystkie dane użytkownika naraz (pełny replace)
 app.post("/api/userdata", authenticateToken, (req, res) => {
-  const allowed = ["schoolManual","preschoolManual","schoolPaid","preschoolPaid","oblManual","oblSchedules","oblPaid"];
+  const allowed = ["schoolManual","preschoolManual","schoolPaid","preschoolPaid","schoolEvents","preschoolEvents","oblManual","oblSchedules","oblPaid"];
   for (const key of allowed) {
     if (req.body[key] !== undefined) {
       userData[key] = req.body[key];
@@ -329,7 +331,7 @@ app.post("/api/userdata", authenticateToken, (req, res) => {
 // ── PATCH /api/userdata ───────────────────────────────────────
 // Aktualizuje tylko wskazane klucze (merge)
 app.patch("/api/userdata", authenticateToken, (req, res) => {
-  const allowed = ["schoolManual","preschoolManual","schoolPaid","preschoolPaid","oblManual","oblSchedules","oblPaid"];
+  const allowed = ["schoolManual","preschoolManual","schoolPaid","preschoolPaid","schoolEvents","preschoolEvents","oblManual","oblSchedules","oblPaid"];
   for (const key of allowed) {
     if (req.body[key] !== undefined) {
       userData[key] = req.body[key];
