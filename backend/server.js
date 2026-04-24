@@ -322,7 +322,7 @@ app.post("/api/admin/full-refresh", authenticateToken, async (req, res) => {
     } catch (err) { console.error(`[FullRefresh] Płatności przedszkole błąd: ${err.message}`); }
 
     try {
-      const leap = await runPythonScript("leapmotor_checker.py", 300000); // wszystkie
+      const leap = await runPythonScript("leapmotor_checker.py", 180000, 30); // ostatnie 30 dni
       if (Array.isArray(leap)) {
         leapmotorCache = leap;
         await saveCache("leapmotor", leap);
