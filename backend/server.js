@@ -137,9 +137,10 @@ function runPythonScript(scriptName, timeoutMs = 120000, sinceDays = null) {
 }
 
 // ── Cache e-mail ──────────────────────────────────────────────
-let messagesCache  = [];
-let paymentsCache  = [];
-let preschoolCache = [];
+let messagesCache   = [];
+let paymentsCache   = [];
+let preschoolCache  = [];
+let leapmotorCache  = [];  // sesje ładowania Leapmotor
 
 function deduplicatePayments(payments) {
   const toKey = (s) => (s || "").toLowerCase()
@@ -257,6 +258,20 @@ app.patch("/api/userdata", authenticateToken, async (req, res) => {
   res.json({ ok: true });
 });
 
+// ── Leapmotor ─────────────────────────────────────────────
+app.get("/api/leapmotor/sessions", authenticateToken, (req, res) => {
+  res.json(leapmotorCache);
+});
+
+app.post("/api/leapmotor/sessions/refresh", authenticateToken, (req, res) => {
+  runPythonScript("leapmotor_checker.py", 120000, 90)
+    .then((data) => {
+      if (Array.isArray(data)) leapmotorCache = data;
+      res.json(leapmotorCache);
+    })
+    .catch((err) => res.status(500).json({ error: err.message }));
+});
+
 // ── Scheduler ─────────────────────────────────────────────────
 function hourlyRefresh() {
   console.log("[Scheduler] Odświeżam dane...");
@@ -323,6 +338,14 @@ async function start() {
           console.log(`[Startup] Płatności przedszkole: ${data.length}`);
         }
         console.log("[Startup] Wszystkie dane załadowane ✅");
+        // Ładuj sesje Leapmotor (ostatnie 90 dni)
+        return runPythonScript("leapmotor_checker.py", 120000, 90);
+      })
+      .then((data) => {
+        if (Array.isArray(data)) {
+          leapmotorCache = data;
+          console.log(`[Startup] Leapmotor sesje: ${data.length}`);
+        }
       })
       .catch((err) => console.error(`[Startup] Błąd: ${err.message}`));
 

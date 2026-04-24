@@ -6,6 +6,7 @@
 import React, { useState, useMemo } from "react";
 import AppLayout from "../components/AppLayout";
 import ObligationsPage from "./ObligationsPage";
+import LeapmotorPage from "./LeapmotorPage";
 import { useAuth } from "../App";
 import { useServerSync } from "../hooks/useServerSync";
 import { parseDate, formatDate, toIsoDate, todayIso } from "../utils/dates";
@@ -190,6 +191,11 @@ export default function Dashboard() {
           onClick={() => setActiveTab("obligations")}>
           📋 Zobowiązania
         </button>
+        <button
+          className={`school-tab ${activeTab === "leapmotor" ? "school-tab--active" : ""}`}
+          onClick={() => setActiveTab("leapmotor")}>
+          ⚡ Leapmotor
+        </button>
       </div>
 
       {/* ── Zakładka: Wydarzenia ── */}
@@ -243,6 +249,13 @@ export default function Dashboard() {
       {activeTab === "obligations" && (
         <section className="dash-section">
           <ObligationsPage />
+        </section>
+      )}
+
+      {/* ── Zakładka: Leapmotor ── */}
+      {activeTab === "leapmotor" && (
+        <section className="dash-section">
+          <LeapmotorPage />
         </section>
       )}
     </AppLayout>

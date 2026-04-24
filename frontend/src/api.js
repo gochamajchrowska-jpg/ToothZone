@@ -104,3 +104,19 @@ export async function patchUserData(token, patch) {
   });
   return handleResponse(res);
 }
+
+// ── Leapmotor ─────────────────────────────────────────────────
+export async function getLeapmotorSessions(token) {
+  const res = await fetch(`${BASE_URL}/api/leapmotor/sessions`, {
+    headers: authHeaders(token),
+  });
+  return handleResponse(res);
+}
+
+export async function refreshLeapmotorSessions(token) {
+  const res = await fetch(`${BASE_URL}/api/leapmotor/sessions/refresh`, {
+    method: "POST",
+    headers: authHeaders(token),
+  });
+  return handleResponse(res);
+}
