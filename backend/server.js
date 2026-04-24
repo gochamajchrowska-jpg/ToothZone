@@ -29,6 +29,8 @@ async function connectMongo() {
     return;
   }
   try {
+    // Node 20 + OpenSSL 3 wymaga tej flagi dla MongoDB Atlas
+    process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
     const client = new MongoClient(MONGO_URI, {
       serverSelectionTimeoutMS: 15000,
     });

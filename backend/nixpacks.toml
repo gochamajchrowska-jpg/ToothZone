@@ -1,10 +1,10 @@
 [phases.setup]
-nixPkgs = ["nodejs_18", "python312", "python312Packages.pip", "python312Packages.setuptools"]
+nixPkgs = ["nodejs_20", "python312", "python312Packages.pip", "python312Packages.setuptools"]
 
 [phases.install]
 cmds = [
   "npm install",
-  "pip3 install imapclient"
+  "pip3 install imapclient --break-system-packages"
 ]
 
 [start]
