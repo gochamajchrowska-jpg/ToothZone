@@ -31,12 +31,22 @@ export function useServerSync(token) {
   const [data, setData]       = useState(() => loadFromLocal());
   const [loading, setLoading] = useState(true);
 
-  // Śledzimy czy są niezapisane zmiany w trakcie ładowania
-  const pendingRef  = useRef({});  // zmiany czekające na zapis
-  const savingRef   = useRef(false); // czy zapis jest w toku
-  const timerRef    = useRef(null);
+  const pendingRef = useRef({});   // niezapisane zmiany
+  const timerRef   = useRef(null);
+  const tokenRef   = useRef(token);
+  tokenRef.current = token;
 
-  // Załaduj z serwera przy starcie — ale NIE nadpisuj jeśli są pending zmiany
+  // ── Zapis na serwer ─────────────────────────────────────────
+  async function flushToServer(patch) {
+    if (!patch || Object.keys(patch).length === 0) return;
+    try {
+      await patchUserData(tokenRef.current, patch);
+    } catch (err) {
+      console.error("[Sync] Błąd zapisu:", err.message);
+    }
+  }
+
+  // ── Załaduj z serwera przy starcie ───────────────────────────
   useEffect(() => {
     if (!token) return;
     let cancelled = false;
@@ -45,7 +55,7 @@ export function useServerSync(token) {
       .then((serverData) => {
         if (cancelled) return;
         setData((prev) => {
-          // Jeśli są niezapisane zmiany — scal serwer + pending (pending wygrywa)
+          // pending wygrywa nad serwerem — nie cofaj lokalnych zmian
           const merged = { ...EMPTY_DATA, ...serverData, ...pendingRef.current };
           saveToLocal(merged);
           return merged;
@@ -59,9 +69,31 @@ export function useServerSync(token) {
     return () => { cancelled = true; };
   }, [token]);
 
-  // Natychmiastowy zapis na serwer — bez debounce dla krytycznych danych
+  // ── Zapisz przed zamknięciem/odświeżeniem strony ─────────────
+  useEffect(() => {
+    function handleBeforeUnload() {
+      const toSend = { ...pendingRef.current };
+      if (Object.keys(toSend).length === 0) return;
+      // keepalive: true pozwala fetchowi działać po zamknięciu strony
+      const url = `${import.meta.env.VITE_API_URL || ""}/api/userdata`;
+      fetch(url, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${tokenRef.current}`,
+        },
+        body: JSON.stringify(toSend),
+        keepalive: true,  // kluczowe — działa przy odświeżeniu strony
+      }).catch(() => {});
+    }
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, []);
+
+  // ── Aktualizuj dane ──────────────────────────────────────────
   const update = useCallback((patch) => {
-    // 1. Zaktualizuj lokalnie natychmiast
+    // 1. Zapisz lokalnie natychmiast
     setData((prev) => {
       const next = { ...prev, ...patch };
       saveToLocal(next);
@@ -71,38 +103,14 @@ export function useServerSync(token) {
     // 2. Dodaj do pending
     pendingRef.current = { ...pendingRef.current, ...patch };
 
-    // 3. Wyślij na serwer (debounce 300ms — krótszy niż poprzednie 800ms)
+    // 3. Wyślij na serwer po 100ms (krótki debounce dla grupowania wielu kliknięć)
     clearTimeout(timerRef.current);
-    timerRef.current = setTimeout(async () => {
-      if (savingRef.current) {
-        // Jeśli zapis w toku, spróbuj ponownie za chwilę
-        timerRef.current = setTimeout(() => {
-          const toSend = { ...pendingRef.current };
-          if (Object.keys(toSend).length === 0) return;
-          savingRef.current = true;
-          patchUserData(token, toSend)
-            .then(() => { pendingRef.current = {}; })
-            .catch((err) => console.error("[Sync] Błąd zapisu:", err.message))
-            .finally(() => { savingRef.current = false; });
-        }, 500);
-        return;
-      }
-
+    timerRef.current = setTimeout(() => {
       const toSend = { ...pendingRef.current };
-      if (Object.keys(toSend).length === 0) return;
-
-      savingRef.current = true;
-      try {
-        await patchUserData(token, toSend);
-        pendingRef.current = {};
-      } catch (err) {
-        console.error("[Sync] Błąd zapisu:", err.message);
-        // Zostaw w pending — spróbuje przy kolejnej zmianie
-      } finally {
-        savingRef.current = false;
-      }
-    }, 300);
-  }, [token]);
+      pendingRef.current = {};
+      flushToServer(toSend);
+    }, 100);
+  }, []);
 
   return { data, update, loading };
 }
