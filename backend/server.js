@@ -264,7 +264,7 @@ app.get("/api/leapmotor/sessions", authenticateToken, (req, res) => {
 });
 
 app.post("/api/leapmotor/sessions/refresh", authenticateToken, (req, res) => {
-  runPythonScript("leapmotor_checker.py", 120000, 90)
+  runPythonScript("leapmotor_checker.py", 180000)
     .then((data) => {
       if (Array.isArray(data)) leapmotorCache = data;
       res.json(leapmotorCache);
@@ -339,7 +339,7 @@ async function start() {
         }
         console.log("[Startup] Wszystkie dane załadowane ✅");
         // Ładuj sesje Leapmotor (ostatnie 90 dni)
-        return runPythonScript("leapmotor_checker.py", 120000, 90);
+        return runPythonScript("leapmotor_checker.py", 180000);  // wszystkie sesje
       })
       .then((data) => {
         if (Array.isArray(data)) {

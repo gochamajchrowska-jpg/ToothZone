@@ -80,10 +80,12 @@ function EditSessionModal({ session, onClose, onSave }) {
 }
 
 // ── Oblicz koszt ──────────────────────────────────────────────
+const COST_PER_PERCENT = 1.4; // zł za każdy % naładowania
+
 function calcCost(session) {
   if (session.level_start == null || session.level_end == null) return null;
   const diff = session.level_end - session.level_start;
-  return diff > 0 ? diff : null; // 1 zł / 1% = diff zł
+  return diff > 0 ? +(diff * COST_PER_PERCENT).toFixed(2) : null;
 }
 
 // ── Główny komponent ──────────────────────────────────────────
@@ -209,7 +211,7 @@ export default function LeapmotorPage() {
           <div className="lp-stat-label">Zakończonych</div>
         </div>
         <div className="lp-stat-card lp-stat-card--accent">
-          <div className="lp-stat-value">{stats.totalCost.toFixed(0)} zł</div>
+          <div className="lp-stat-value">{stats.totalCost.toFixed(2).replace(".", ",")} zł</div>
           <div className="lp-stat-label">Łączny koszt</div>
         </div>
       </div>
@@ -277,7 +279,7 @@ export default function LeapmotorPage() {
                     </td>
                     <td className="lp-cost">
                       {cost != null
-                        ? <strong>{cost} zł</strong>
+                        ? <strong>{typeof cost === "number" ? cost.toFixed(2).replace(".", ",") : cost} zł</strong>
                         : <span className="lp-missing">—</span>}
                     </td>
                     <td>

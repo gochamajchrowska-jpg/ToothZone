@@ -146,7 +146,19 @@ def fetch_leapmotor_emails():
 
             body = get_body(msg)
 
-            if "Rozpoczęto" in subject or "Rozpoczeto" in subject or "Rozpocz" in subject:
+            subject_lower = subject.lower()
+            is_start = ("rozpocz" in subject_lower) or ("started" in subject_lower) or ("start" in subject_lower)
+            is_end   = ("zako" in subject_lower) or ("finish" in subject_lower) or ("complet" in subject_lower) or ("ended" in subject_lower)
+
+            # Fallback: sprawdź treść maila jeśli subject nie pomógł
+            if not is_start and not is_end:
+                body_lower = body.lower()
+                if "rozpocz" in body_lower or "started" in body_lower:
+                    is_start = True
+                elif "zako" in body_lower or "complet" in body_lower or "do poziomu" in body_lower:
+                    is_end = True
+
+            if is_start:
                 parsed = parse_start(body, date_str)
                 if parsed:
                     key = f"{date_str}_{parsed['time_start']}"
@@ -161,18 +173,19 @@ def fetch_leapmotor_emails():
                         }
                     print(f"[Leapmotor] Start: {date_str} {parsed['time_start']} poziom {parsed['level_start']}%", file=sys.stderr)
 
-            elif "zakończone" in subject or "zakonczone" in subject or "zako" in subject.lower():
+            elif is_end:
                 parsed = parse_end(body, date_str)
                 if parsed:
-                    # Dopasuj do sesji startowej z tego samego dnia
-                    matched = False
+                    # Znajdź sesję startową z tego samego dnia (może być wiele — bierz ostatnią niezakończoną)
+                    best_key = None
                     for key, session in sessions.items():
                         if session["date"] == date_str and session["level_end"] is None:
-                            session["time_end"]  = parsed["time_end"]
-                            session["level_end"] = parsed["level_end"]
-                            matched = True
-                            break
-                    if not matched:
+                            best_key = key
+                            # Nie przerywaj — bierz ostatnią pasującą
+                    if best_key:
+                        sessions[best_key]["time_end"]  = parsed["time_end"]
+                        sessions[best_key]["level_end"] = parsed["level_end"]
+                    else:
                         # Brak sesji startowej — utwórz niekompletną
                         key = f"{date_str}_{parsed['time_end']}_end"
                         sessions[key] = {
@@ -184,6 +197,8 @@ def fetch_leapmotor_emails():
                             "level_end":   parsed["level_end"],
                         }
                     print(f"[Leapmotor] Koniec: {date_str} {parsed['time_end']} poziom {parsed['level_end']}%", file=sys.stderr)
+            else:
+                print(f"[Leapmotor] Nieznany typ maila: {subject!r}", file=sys.stderr)
 
         mail.logout()
 
