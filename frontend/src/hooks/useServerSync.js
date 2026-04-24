@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { getUserData, patchUserData } from "../api";
 
-// Domyślna pusta struktura — zapobiega null na starcie
 const EMPTY_DATA = {
   schoolManual:    [],
   preschoolManual: [],
@@ -28,20 +27,16 @@ function saveToLocal(data) {
   catch { /* quota */ }
 }
 
-/**
- * Synchronizuje dane użytkownika z serwerem Railway.
- * - Przy starcie: ładuje z serwera (fallback: localStorage cache)
- * - Po każdej zmianie: PATCH na serwer (debounced 800ms)
- * - Dane dostępne natychmiast z cache, aktualizowane po odpowiedzi serwera
- */
 export function useServerSync(token) {
-  // Zacznij od cache z localStorage — brak opóźnienia przy renderze
   const [data, setData]       = useState(() => loadFromLocal());
   const [loading, setLoading] = useState(true);
-  const saveTimerRef          = useRef(null);
-  const pendingPatch          = useRef({});
 
-  // Załaduj dane z serwera przy starcie
+  // Śledzimy czy są niezapisane zmiany w trakcie ładowania
+  const pendingRef  = useRef({});  // zmiany czekające na zapis
+  const savingRef   = useRef(false); // czy zapis jest w toku
+  const timerRef    = useRef(null);
+
+  // Załaduj z serwera przy starcie — ale NIE nadpisuj jeśli są pending zmiany
   useEffect(() => {
     if (!token) return;
     let cancelled = false;
@@ -49,39 +44,64 @@ export function useServerSync(token) {
     getUserData(token)
       .then((serverData) => {
         if (cancelled) return;
-        // Serwer jest źródłem prawdy — nadpisz cache
-        const merged = { ...EMPTY_DATA, ...serverData };
-        setData(merged);
-        saveToLocal(merged);
+        setData((prev) => {
+          // Jeśli są niezapisane zmiany — scal serwer + pending (pending wygrywa)
+          const merged = { ...EMPTY_DATA, ...serverData, ...pendingRef.current };
+          saveToLocal(merged);
+          return merged;
+        });
         setLoading(false);
       })
       .catch(() => {
-        // Serwer niedostępny — zostań przy cache
         if (!cancelled) setLoading(false);
       });
 
     return () => { cancelled = true; };
   }, [token]);
 
-  // Aktualizuj dane lokalnie i synchronizuj z serwerem
+  // Natychmiastowy zapis na serwer — bez debounce dla krytycznych danych
   const update = useCallback((patch) => {
+    // 1. Zaktualizuj lokalnie natychmiast
     setData((prev) => {
       const next = { ...prev, ...patch };
       saveToLocal(next);
-
-      // Zbieraj zmiany i wysyłaj razem (debounced)
-      pendingPatch.current = { ...pendingPatch.current, ...patch };
-      clearTimeout(saveTimerRef.current);
-      saveTimerRef.current = setTimeout(() => {
-        const toSend = { ...pendingPatch.current };
-        pendingPatch.current = {};
-        patchUserData(token, toSend).catch((err) =>
-          console.error("[Sync] Błąd zapisu:", err.message)
-        );
-      }, 800);
-
       return next;
     });
+
+    // 2. Dodaj do pending
+    pendingRef.current = { ...pendingRef.current, ...patch };
+
+    // 3. Wyślij na serwer (debounce 300ms — krótszy niż poprzednie 800ms)
+    clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(async () => {
+      if (savingRef.current) {
+        // Jeśli zapis w toku, spróbuj ponownie za chwilę
+        timerRef.current = setTimeout(() => {
+          const toSend = { ...pendingRef.current };
+          if (Object.keys(toSend).length === 0) return;
+          savingRef.current = true;
+          patchUserData(token, toSend)
+            .then(() => { pendingRef.current = {}; })
+            .catch((err) => console.error("[Sync] Błąd zapisu:", err.message))
+            .finally(() => { savingRef.current = false; });
+        }, 500);
+        return;
+      }
+
+      const toSend = { ...pendingRef.current };
+      if (Object.keys(toSend).length === 0) return;
+
+      savingRef.current = true;
+      try {
+        await patchUserData(token, toSend);
+        pendingRef.current = {};
+      } catch (err) {
+        console.error("[Sync] Błąd zapisu:", err.message);
+        // Zostaw w pending — spróbuje przy kolejnej zmianie
+      } finally {
+        savingRef.current = false;
+      }
+    }, 300);
   }, [token]);
 
   return { data, update, loading };
