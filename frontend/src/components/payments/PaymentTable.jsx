@@ -53,7 +53,7 @@ export default function PaymentTable({
                   </td>
                   <td className="pay-amount">{pay.kwota}</td>
                   <td className="pay-deadline">{pay.termin}</td>
-                  <td className="pay-status-cell">
+                  <td className="pay-status-cell" data-termin={pay.termin && pay.termin !== "—" ? `Termin: ${pay.termin}` : ""}>
                     <span className={`pay-badge pay-badge--${status}`}>
                       {STATUS_LABELS[status] ?? "—"}
                     </span>

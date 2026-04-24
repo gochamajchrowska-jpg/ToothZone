@@ -306,27 +306,77 @@
     z-index: 1;
   }
 
-  /* Tabela zobowiązań → karty */
+  /* Tabela zobowiązań — 2-wierszowe karty */
   .obl-table thead { display: none; }
-  .obl-table tbody { display: flex; flex-direction: column; gap: 8px; }
+  .obl-table tbody { display: flex; flex-direction: column; gap: 6px; }
   .obl-table tr {
-    display: flex;
-    flex-direction: column;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    grid-template-rows: auto auto;
+    grid-template-areas:
+      "name   amount"
+      "status actions";
     background: var(--clr-surface);
     border: 1.5px solid var(--clr-border);
     border-radius: var(--radius-md);
-    padding: 12px;
-    gap: 6px;
+    padding: 10px 12px;
+    gap: 4px 8px;
+    align-items: center;
   }
   .obl-table tr.row-overdue {
     border-color: var(--clr-error-border);
     background: var(--clr-error-bg);
   }
   .obl-table td { border: none; padding: 0; font-size: 0.85rem; }
+
+  /* Nazwa — wiersz 1 lewa */
+  .obl-table td:nth-child(1) { grid-area: name; }
+  .obl-name { font-size: 0.88rem; margin-bottom: 0; }
+  .obl-badge { margin-top: 2px; }
+
+  /* Kwota — wiersz 1 prawa */
+  .obl-table td.pay-amount {
+    grid-area: amount;
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--clr-primary-dark);
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  /* Termin — ukryty osobno, pokazany w statusie */
+  .obl-table td:nth-child(3) { display: none; }
+
+  /* Status — wiersz 2 lewa */
+  .obl-table td:nth-child(4) {
+    grid-area: status;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .obl-table td:nth-child(4) .pay-badge {
+    font-size: 0.68rem !important;
+    padding: 2px 6px !important;
+  }
+
+  /* Akcje — wiersz 2 prawa */
   .obl-actions {
-    flex-wrap: wrap;
-    gap: 6px;
-    margin-top: 4px;
+    grid-area: actions;
+    flex-wrap: nowrap;
+    gap: 4px;
+    margin-top: 0;
+    justify-content: flex-end;
+  }
+  .obl-actions .btn-mark-paid {
+    padding: 4px 10px !important;
+    font-size: 0.78rem !important;
+    min-height: 32px !important;
+  }
+  .obl-actions .btn-view-schedule,
+  .obl-actions .btn-delete {
+    padding: 4px 8px !important;
+    font-size: 0.8rem !important;
+    min-height: 32px !important;
   }
 
   /* Harmonogramy */

@@ -393,9 +393,18 @@
   border-radius: var(--radius-lg);
   width: 100%;
   max-width: 440px;
+  max-height: 90vh;
   box-shadow: var(--shadow-lg);
   animation: slideUp 0.2s ease-out;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Body scrolluje na desktopie gdy treść za długa */
+.modal-body {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 @keyframes slideUp {
@@ -441,6 +450,8 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-md);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* Pole formularza */
@@ -847,53 +858,106 @@
     margin-top: 4px;
   }
 
-  /* Tabela płatności — karty */
+  /* Tabela płatności — kompaktowe karty 2-wierszowe */
   .payments-table thead { display: none; }
-  .payments-table tbody { display: flex; flex-direction: column; gap: 8px; }
+  .payments-table tbody { display: flex; flex-direction: column; gap: 6px; }
+
+  /*
+   * Wiersz 1: [Miesiąc .............. Kwota]
+   * Wiersz 2: [Termin + Badge ...... Zapłać]
+   */
   .payments-table tr {
     display: grid;
     grid-template-columns: 1fr auto;
-    grid-template-rows: auto auto auto;
+    grid-template-rows: auto auto;
+    grid-template-areas:
+      "month  amount"
+      "status status";
     background: var(--clr-surface);
     border: 1.5px solid var(--clr-border);
     border-radius: var(--radius-md);
-    padding: 12px;
+    padding: 10px 12px;
     gap: 4px 8px;
+    align-items: center;
   }
   .payments-table tr.row-overdue {
     border-color: var(--clr-error-border);
     background: var(--clr-error-bg);
   }
-  .payments-table tr.row-paid { opacity: 0.6; }
+  .payments-table tr.row-paid {
+    opacity: 0.55;
+    background: var(--clr-surface-2);
+  }
 
+  /* Wiersz 1 lewa: Miesiąc + termin w jednej linii */
   .pay-month {
-    font-weight: 700;
-    font-size: 0.9rem;
-    grid-column: 1;
-    grid-row: 1;
+    grid-area: month;
+    font-weight: 600;
+    font-size: 0.88rem;
+    color: var(--clr-text);
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    flex-wrap: wrap;
   }
-  .pay-amount {
-    font-weight: 700;
-    font-size: 0.95rem;
-    color: var(--clr-primary-dark);
-    grid-column: 2;
-    grid-row: 1;
-    text-align: right;
-  }
-  .pay-deadline {
-    font-size: 0.78rem;
+  .pay-komentarz {
+    font-size: 0.72rem;
     color: var(--clr-text-muted);
-    grid-column: 1;
-    grid-row: 2;
+    font-style: italic;
+    font-weight: 400;
   }
-  .pay-deadline::before { content: "Termin: "; }
+
+  /* Termin jako inline suffix za nazwą miesiąca */
+  .pay-deadline {
+    grid-area: month; /* nadpisane przez JS — ukryte, termin wbudowany */
+    display: none;    /* ukrywamy osobną komórkę, termin w .pay-month */
+  }
+
+  /* Wiersz 1 prawa: Kwota */
+  .pay-amount {
+    grid-area: amount;
+    font-weight: 700;
+    font-size: 1rem;
+    color: var(--clr-primary-dark);
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  /* Wiersz 2: termin + badge + przycisk w jednej linii */
   .pay-status-cell {
-    grid-column: 1 / -1;
-    grid-row: 3;
+    grid-area: status;
     display: flex;
     align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
+    gap: 6px;
+    flex-wrap: nowrap;
+    overflow: hidden;
+  }
+  /* Termin wewnątrz status-cell jako pierwszy element */
+  .pay-status-cell::before {
+    content: attr(data-termin);
+    font-size: 0.72rem;
+    color: var(--clr-text-muted);
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .pay-badge {
+    font-size: 0.68rem !important;
+    padding: 2px 6px !important;
+    flex-shrink: 0;
+  }
+  .btn-mark-paid {
+    margin-left: auto;
+    padding: 4px 10px !important;
+    font-size: 0.78rem !important;
+    min-height: 32px !important;
+    flex-shrink: 0;
+  }
+  .btn-view-schedule,
+  .btn-delete {
+    padding: 4px 8px !important;
+    font-size: 0.8rem !important;
+    min-height: 32px !important;
+    flex-shrink: 0;
   }
 
   /* Suma roku szkolnego */
@@ -917,39 +981,61 @@
     gap: 8px;
   }
 
-  /* Modalne — pełny ekran na mobile, nad tab barem */
+  /* Modalne — wysuwa się od dołu jak iOS sheet */
   .modal-backdrop {
     align-items: flex-end;
-    z-index: 9999; /* ponad dolną nawigacją (z-index: 100) */
+    z-index: 9999;
     padding: 0;
   }
+
+  /* Modal jako scrollowalny arkusz */
   .modal-box {
     border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-    max-height: 85vh;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-    padding-bottom: calc(16px + env(safe-area-inset-bottom));
+    /* Wysokość: cały ekran minus pasek statusu */
+    max-height: calc(100vh - 60px);
+    height: auto;
     width: 100%;
     max-width: 100%;
+    display: flex;
+    flex-direction: column;
     animation: slideUpMobile 0.25s ease-out;
+    overflow: hidden; /* dzieci kontrolują scroll */
   }
+
   @keyframes slideUpMobile {
     from { transform: translateY(100%); }
     to   { transform: translateY(0); }
   }
+
   .modal-box--wide {
     max-width: 100%;
     border-radius: var(--radius-lg) var(--radius-lg) 0 0;
   }
-  .modal-footer {
-    position: sticky;
-    bottom: 0;
-    background: var(--clr-surface);
-    border-top: 1px solid var(--clr-border);
-    padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+
+  /* Nagłówek — przyklejony na górze */
+  .modal-header {
+    flex-shrink: 0;
+    padding: 16px 16px 12px;
   }
 
-  /* Inputy — większe dla palca, brak auto-zoom iOS */
+  /* Body — scrollowalne */
+  .modal-body {
+    flex: 1;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 12px 16px;
+    overscroll-behavior: contain;
+  }
+
+  /* Footer — przyklejony na dole */
+  .modal-footer {
+    flex-shrink: 0;
+    padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+    border-top: 1px solid var(--clr-border);
+    background: var(--clr-surface);
+  }
+
+  /* Inputy — 16px zapobiega auto-zoom iOS */
   .modal-field input,
   .modal-field textarea,
   .modal-field select {
@@ -957,8 +1043,21 @@
     min-height: 44px;
     padding: 10px 12px;
   }
+  .modal-field label { font-size: 0.88rem; }
+  .modal-field { margin-bottom: 12px; }
 
-  /* Przyciski akcji w tabeli — większy obszar dotyku */
+  /* Checkbox — większy obszar dotyku */
+  .checkbox-label {
+    padding: 8px 0;
+    gap: 12px;
+  }
+  .checkbox-label input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+  }
+
+  /* Przyciski akcji w tabeli */
   .btn-mark-paid,
   .btn-add,
   .btn-refresh,
@@ -968,18 +1067,13 @@
     padding: 8px 14px;
   }
 
-  /* Nagłówek sekcji — przyciski w rzędzie */
+  /* Nagłówek sekcji */
   .messages-header {
     flex-direction: column;
     align-items: stretch;
     gap: 8px;
   }
   .messages-header > div,
-  .messages-header > button {
-    width: 100%;
-  }
-  .btn-refresh {
-    width: 100%;
-    justify-content: center;
-  }
+  .messages-header > button { width: 100%; }
+  .btn-refresh { width: 100%; justify-content: center; }
 }
