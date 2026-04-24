@@ -97,6 +97,8 @@ export default function LeapmotorPage() {
   const [refreshing,  setRefreshing]  = useState(false);
   const [error,       setError]       = useState("");
   const [editSession, setEditSession] = useState(null);
+  const [page, setPage]             = useState(1);
+  const PAGE_SIZE = 10;
 
   // Ręcznie dodane / edytowane (localStorage)
   const [overrides, setOverrides] = useState(() => {
@@ -164,13 +166,16 @@ export default function LeapmotorPage() {
     if (!window.confirm("Usunąć tę sesję?")) return;
     setOverrides((prev) => {
       const next = { ...prev };
+      // Ręczne — usuń całkowicie; automatyczne — oznacz jako usunięte
       if (next[id]?._manual) {
         delete next[id];
       } else {
-        next[id] = { ...next[id], _deleted: true };
+        next[id] = { ...(next[id] || {}), _deleted: true };
       }
       return next;
     });
+    // Wróć na poprzednią stronę jeśli bieżąca jest pusta
+    setPage((p) => Math.max(1, p));
   }
 
   // Statystyki
@@ -183,6 +188,8 @@ export default function LeapmotorPage() {
   }, [mergedSessions, overrides]);
 
   const visibleSessions = mergedSessions.filter((s) => !overrides[s.id]?._deleted);
+  const totalPages     = Math.ceil(visibleSessions.length / PAGE_SIZE);
+  const pagedSessions  = visibleSessions.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   return (
     <>
@@ -250,7 +257,7 @@ export default function LeapmotorPage() {
               </tr>
             </thead>
             <tbody>
-              {visibleSessions.map((s) => {
+              {pagedSessions.map((s) => {
                 const cost = calcCost(s);
                 const diff = s.level_start != null && s.level_end != null
                   ? s.level_end - s.level_start : null;
@@ -282,13 +289,11 @@ export default function LeapmotorPage() {
                         ? <strong>{typeof cost === "number" ? cost.toFixed(2).replace(".", ",") : cost} zł</strong>
                         : <span className="lp-missing">—</span>}
                     </td>
-                    <td>
+                    <td style={{whiteSpace:"nowrap"}}>
                       <button className="btn-view-schedule"
                         onClick={() => setEditSession(s)} title="Edytuj">✏️</button>
-                      {s._manual && (
-                        <button className="btn-delete"
-                          onClick={() => handleDelete(s.id)} title="Usuń">🗑</button>
-                      )}
+                      <button className="btn-delete"
+                        onClick={() => handleDelete(s.id)} title="Usuń">🗑</button>
                     </td>
                   </tr>
                 );
@@ -296,6 +301,25 @@ export default function LeapmotorPage() {
             </tbody>
           </table>
         </div>
+
+        {/* Stronicowanie */}
+        {totalPages > 1 && (
+          <div className="pagination" style={{marginTop:"12px"}}>
+            <span className="pagination-info">
+              {(page-1)*PAGE_SIZE+1}–{Math.min(page*PAGE_SIZE, visibleSessions.length)} z {visibleSessions.length}
+            </span>
+            <div className="pagination-controls">
+              <button className="page-btn" onClick={() => setPage(1)} disabled={page===1}>«</button>
+              <button className="page-btn" onClick={() => setPage(p=>p-1)} disabled={page===1}>‹</button>
+              {Array.from({length: totalPages}, (_,i) => i+1).map(p => (
+                <button key={p} className={`page-btn ${p===page?"page-btn--active":""}`}
+                  onClick={() => setPage(p)}>{p}</button>
+              ))}
+              <button className="page-btn" onClick={() => setPage(p=>p+1)} disabled={page===totalPages}>›</button>
+              <button className="page-btn" onClick={() => setPage(totalPages)} disabled={page===totalPages}>»</button>
+            </div>
+          </div>
+        )}
       )}
     </>
   );
