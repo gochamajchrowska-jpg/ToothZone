@@ -80,7 +80,7 @@ function EditSessionModal({ session, onClose, onSave }) {
 }
 
 // ── Oblicz koszt ──────────────────────────────────────────────
-const COST_PER_PERCENT = 1.4; // zł za każdy % naładowania
+const COST_PER_PERCENT = 0.284; // zł za każdy % naładowania
 
 function calcCost(session) {
   if (session.level_start == null || session.level_end == null) return null;
