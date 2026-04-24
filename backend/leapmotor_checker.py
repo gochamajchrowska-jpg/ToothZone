@@ -105,36 +105,42 @@ def fetch_leapmotor_emails():
         mail.select("INBOX")
         print("[Leapmotor] Zalogowano.", file=sys.stderr)
 
-        # Zbierz ID maili z różnych kryteriów
-        all_mail_ids = set()
-        since_suffix = ""
+        # WP.pl IMAP nie obsługuje poprawnie FROM z długimi adresami
+        # Pobieramy ALL lub SINCE i filtrujemy po nadawcy lokalnie
         if SINCE_DAYS:
             since_date = (datetime.now() - timedelta(days=SINCE_DAYS)).strftime("%d-%b-%Y")
-            since_suffix = f" SINCE {since_date}"
-            print(f"[Leapmotor] Szukam od {since_date}", file=sys.stderr)
+            search_criteria = f"SINCE {since_date}"
+            print(f"[Leapmotor] Szukam wszystkich maili od {since_date}", file=sys.stderr)
         else:
-            print("[Leapmotor] Szukam wszystkich maili Leapmotor", file=sys.stderr)
+            search_criteria = "ALL"
+            print("[Leapmotor] Pobieranie wszystkich maili (filtr lokalny)...", file=sys.stderr)
 
-        for criteria in [
-            f'FROM "{LEAPMOTOR_SENDER}"{since_suffix}',
-            f'FROM "leapmotor-international"{since_suffix}',
-            f'FROM "leapmotor"{since_suffix}',
-        ]:
-            try:
-                status, data = mail.search(None, criteria)
-                if status == "OK" and data[0]:
-                    ids = data[0].split()
-                    all_mail_ids.update(ids)
-                    print(f"[Leapmotor] '{criteria}': {len(ids)} maili", file=sys.stderr)
-            except Exception as e:
-                print(f"[Leapmotor] Błąd kryterium: {e}", file=sys.stderr)
-
-        if not all_mail_ids:
-            print("[Leapmotor] Brak wyników.", file=sys.stderr)
+        status, data = mail.search(None, search_criteria)
+        if status != "OK" or not data[0]:
+            print("[Leapmotor] Brak maili.", file=sys.stderr)
             return []
 
-        mail_ids = sorted(all_mail_ids)
-        print(f"[Leapmotor] Znaleziono łącznie {len(mail_ids)} unikalnych maili.", file=sys.stderr)
+        all_ids = data[0].split()
+        print(f"[Leapmotor] Wszystkich maili w skrzynce: {len(all_ids)}", file=sys.stderr)
+
+        # Filtruj lokalnie po nadawcy — pobierz tylko nagłówki (szybciej)
+        mail_ids = []
+        for mid in all_ids:
+            try:
+                s, hdr = mail.fetch(mid, "(BODY.PEEK[HEADER.FIELDS (FROM)])")
+                if s != "OK":
+                    continue
+                hdr_text = hdr[0][1].decode("utf-8", errors="replace").lower()
+                if "leapmotor" in hdr_text:
+                    mail_ids.append(mid)
+            except Exception:
+                continue
+
+        print(f"[Leapmotor] Maili od Leapmotor: {len(mail_ids)}", file=sys.stderr)
+
+        if not mail_ids:
+            print("[Leapmotor] Brak maili od Leapmotor.", file=sys.stderr)
+            return []
 
         for mail_id in mail_ids:
             status, msg_data = mail.fetch(mail_id, "(RFC822)")
