@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 """
 leapmotor_checker.py — Sesje ładowania Leapmotor C10
-Szuka maili od nonreply@app.leapmotor-international.com we wszystkich folderach.
 argv: email password imap_server imap_port [since_days]
 """
 
@@ -26,7 +25,7 @@ else:
     IMAP_PORT      = int(os.getenv("IMAP_PORT", "993"))
     SINCE_DAYS     = None
 
-LEAPMOTOR_KEYWORD = "leapmotor"
+LEAPMOTOR_SENDER = "nonreply@app.leapmotor-international.com"
 
 
 def decode_payload(part):
@@ -46,6 +45,17 @@ def get_body(msg):
     return decode_payload(msg)
 
 
+def decode_subject(raw):
+    parts = decode_header(raw or "")
+    result = ""
+    for part, charset in parts:
+        if isinstance(part, bytes):
+            result += part.decode(charset or "utf-8", errors="replace")
+        else:
+            result += str(part)
+    return result
+
+
 def parse_start(body):
     m_time  = re.search(r"Czas pojazdu\s+(\d{1,2}:\d{2})", body)
     m_level = re.search(r"wynosi\s+(\d+)%", body)
@@ -62,84 +72,6 @@ def parse_end(body):
     return None, None
 
 
-def is_leapmotor(msg):
-    from_hdr = msg.get("From", "").lower()
-    return LEAPMOTOR_KEYWORD in from_hdr
-
-
-def get_folders(mail):
-    """Zwraca listę wszystkich folderów IMAP."""
-    typ, folder_list = mail.list()
-    folders = ["INBOX"]
-    if typ == "OK":
-        for f in folder_list:
-            try:
-                f_str = f.decode("utf-8", errors="replace")
-                # Format: (\HasNoChildren) "/" "Folder/Name"
-                # Wyciągnij ostatnią część po separatorze
-                m = re.search(r'"/" "?(.+?)"?\s*$', f_str)
-                if m:
-                    name = m.group(1).strip().strip('"')
-                    if name and name not in folders:
-                        folders.append(name)
-            except Exception:
-                continue
-    return folders
-
-
-def search_folder(mail, folder, since_days):
-    """Szuka maili Leapmotor w danym folderze. Zwraca listę (folder, mail_id, msg)."""
-    results = []
-    try:
-        rv, _ = mail.select(f'"{folder}"', readonly=True)
-        if rv != "OK":
-            return results
-
-        # Kryterium wyszukiwania
-        if since_days:
-            since_date = (datetime.now() - timedelta(days=since_days)).strftime("%d-%b-%Y")
-            criteria = f"SINCE {since_date}"
-        else:
-            criteria = "ALL"
-
-        status, data = mail.search(None, criteria)
-        if status != "OK" or not data[0]:
-            return results
-
-        all_ids = data[0].split()
-        print(f"[Leapmotor] Folder {folder!r}: {len(all_ids)} maili do sprawdzenia", file=sys.stderr)
-
-        for mid in all_ids:
-            try:
-                # Pobierz tylko nagłówek FROM najpierw (szybciej)
-                s, hdr_data = mail.fetch(mid, "(BODY.PEEK[HEADER.FIELDS (FROM SUBJECT DATE)])")
-                if s != "OK" or not hdr_data or not hdr_data[0]:
-                    continue
-                raw_hdr = hdr_data[0][1] if isinstance(hdr_data[0], tuple) else b""
-                hdr_text = raw_hdr.decode("utf-8", errors="replace").lower()
-
-                if LEAPMOTOR_KEYWORD not in hdr_text:
-                    continue
-
-                # Mamy mail Leapmotor — pobierz pełną treść
-                s2, msg_data = mail.fetch(mid, "(RFC822)")
-                if s2 != "OK" or not msg_data or not msg_data[0]:
-                    continue
-
-                msg = email.message_from_bytes(msg_data[0][1])
-                results.append((folder, mid, msg))
-                print(f"[Leapmotor] Znaleziono mail #{mid.decode()} w {folder!r}: FROM={msg.get('From','?')[:60]}", file=sys.stderr)
-
-            except Exception as e:
-                print(f"[Leapmotor] Błąd fetcha #{mid}: {e}", file=sys.stderr)
-                continue
-
-    except Exception as e:
-        print(f"[Leapmotor] Błąd folderu {folder!r}: {e}", file=sys.stderr)
-
-    return results
-
-
 def fetch_leapmotor_emails():
     sessions = {}
 
@@ -149,75 +81,131 @@ def fetch_leapmotor_emails():
         mail.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
         print("[Leapmotor] Zalogowano.", file=sys.stderr)
 
-        folders = get_folders(mail)
-        print(f"[Leapmotor] Foldery do sprawdzenia: {folders}", file=sys.stderr)
+        # Sprawdź wszystkie foldery
+        typ, folder_list = mail.list()
+        folders = []
+        if typ == "OK":
+            for f in folder_list:
+                try:
+                    f_str = f.decode("utf-8", errors="replace")
+                    m = re.search(r'"/" (.+)$', f_str)
+                    if m:
+                        name = m.group(1).strip().strip('"')
+                        folders.append(name)
+                except Exception:
+                    continue
+        if not folders:
+            folders = ["INBOX"]
+        print(f"[Leapmotor] Foldery: {folders}", file=sys.stderr)
 
-        all_messages = []
+        all_mail_ids = []  # lista (folder, id)
+
         for folder in folders:
-            msgs = search_folder(mail, folder, SINCE_DAYS)
-            all_messages.extend(msgs)
-
-        print(f"[Leapmotor] Łącznie maili Leapmotor: {len(all_messages)}", file=sys.stderr)
-        mail.logout()
-
-        # Przetwórz wiadomości
-        for folder, mid, msg in all_messages:
-            # Data emaila
-            date_raw = msg.get("Date", "")
             try:
-                parsed_date = email.utils.parsedate_to_datetime(date_raw)
-                date_str = parsed_date.strftime("%d.%m.%Y")
-            except Exception:
-                date_str = "—"
+                rv, _ = mail.select(f'"{folder}"', readonly=True)
+                if rv != "OK":
+                    continue
 
-            # Subject
-            subject_raw = msg.get("Subject", "")
-            parts = decode_header(subject_raw)
-            subject = ""
-            for part, charset in parts:
-                if isinstance(part, bytes):
-                    subject += part.decode(charset or "utf-8", errors="replace")
+                # Szukaj po FROM
+                searches = [
+                    f'FROM "nonreply@app.leapmotor-international.com"',
+                    f'FROM "leapmotor-international.com"',
+                    f'FROM "leapmotor"',
+                ]
+                if SINCE_DAYS:
+                    since = (datetime.now() - timedelta(days=SINCE_DAYS)).strftime("%d-%b-%Y")
+                    searches = [s + f" SINCE {since}" for s in searches]
+
+                folder_ids = set()
+                for criteria in searches:
+                    try:
+                        status, data = mail.search(None, criteria)
+                        if status == "OK" and data[0]:
+                            ids = data[0].split()
+                            folder_ids.update(ids)
+                            if ids:
+                                print(f"[Leapmotor] {folder!r} '{criteria}': {len(ids)}", file=sys.stderr)
+                    except Exception as e:
+                        print(f"[Leapmotor] Search error: {e}", file=sys.stderr)
+
+                for mid in folder_ids:
+                    all_mail_ids.append((folder, mid))
+
+            except Exception as e:
+                print(f"[Leapmotor] Folder {folder!r} error: {e}", file=sys.stderr)
+                continue
+
+        print(f"[Leapmotor] Łącznie maili: {len(all_mail_ids)}", file=sys.stderr)
+
+        current_folder = None
+        for folder, mid in all_mail_ids:
+            try:
+                if folder != current_folder:
+                    mail.select(f'"{folder}"', readonly=True)
+                    current_folder = folder
+
+                s, msg_data = mail.fetch(mid, "(RFC822)")
+                if s != "OK" or not msg_data or not msg_data[0]:
+                    continue
+
+                msg = email.message_from_bytes(msg_data[0][1])
+
+                # Sprawdź FROM
+                from_hdr = msg.get("From", "").lower()
+                if "leapmotor" not in from_hdr:
+                    continue
+
+                # Data
+                try:
+                    parsed_date = email.utils.parsedate_to_datetime(msg.get("Date", ""))
+                    date_str = parsed_date.strftime("%d.%m.%Y")
+                except Exception:
+                    date_str = "—"
+
+                subject = decode_subject(msg.get("Subject", ""))
+                body = get_body(msg)
+                sl = subject.lower()
+                bl = body.lower()
+
+                is_start = "rozpocz" in sl or ("wynosi" in bl and "rozpocz" in bl)
+                is_end   = "zako" in sl or "do poziomu" in bl
+
+                print(f"[Leapmotor] {date_str} {subject!r} start={is_start} end={is_end}", file=sys.stderr)
+
+                if is_start:
+                    t, lvl = parse_start(body)
+                    if t and lvl is not None:
+                        key = f"{date_str}_{t}"
+                        if key not in sessions:
+                            sessions[key] = {"id": key, "date": date_str,
+                                             "time_start": t, "level_start": lvl,
+                                             "time_end": None, "level_end": None}
+                        print(f"[Leapmotor] ✅ Start {date_str} {t} {lvl}%", file=sys.stderr)
+
+                elif is_end:
+                    t, lvl = parse_end(body)
+                    if t and lvl is not None:
+                        matched = next((k for k, s in sessions.items()
+                                        if s["date"] == date_str and s["level_end"] is None), None)
+                        if matched:
+                            sessions[matched]["time_end"]  = t
+                            sessions[matched]["level_end"] = lvl
+                        else:
+                            key = f"{date_str}_{t}_end"
+                            sessions[key] = {"id": key, "date": date_str,
+                                             "time_start": None, "level_start": None,
+                                             "time_end": t, "level_end": lvl}
+                        print(f"[Leapmotor] ✅ Koniec {date_str} {t} {lvl}%", file=sys.stderr)
                 else:
-                    subject += str(part)
+                    print(f"[Leapmotor] ⚠️ Pominięto: {subject!r}", file=sys.stderr)
 
-            body = get_body(msg)
-            subject_lower = subject.lower()
-            body_lower    = body.lower()
+            except Exception as e:
+                import traceback
+                print(f"[Leapmotor] Błąd maila: {e}", file=sys.stderr)
+                traceback.print_exc(file=sys.stderr)
+                continue
 
-            is_start = "rozpocz" in subject_lower or ("wynosi" in body_lower and "rozpocz" in body_lower)
-            is_end   = "zako" in subject_lower or "do poziomu" in body_lower
-
-            print(f"[Leapmotor] {date_str} | Subject: {subject!r} | start={is_start} end={is_end}", file=sys.stderr)
-
-            if is_start:
-                t, lvl = parse_start(body)
-                if t and lvl is not None:
-                    key = f"{date_str}_{t}"
-                    if key not in sessions:
-                        sessions[key] = {"id": key, "date": date_str,
-                                         "time_start": t, "level_start": lvl,
-                                         "time_end": None, "level_end": None}
-                    print(f"[Leapmotor] ✅ Start {date_str} {t} → {lvl}%", file=sys.stderr)
-
-            elif is_end:
-                t, lvl = parse_end(body)
-                if t and lvl is not None:
-                    # Dopasuj do sesji z tego samego dnia
-                    matched = None
-                    for key, s in sessions.items():
-                        if s["date"] == date_str and s["level_end"] is None:
-                            matched = key
-                    if matched:
-                        sessions[matched]["time_end"]  = t
-                        sessions[matched]["level_end"] = lvl
-                    else:
-                        key = f"{date_str}_{t}_end"
-                        sessions[key] = {"id": key, "date": date_str,
-                                         "time_start": None, "level_start": None,
-                                         "time_end": t, "level_end": lvl}
-                    print(f"[Leapmotor] ✅ Koniec {date_str} {t} → {lvl}%", file=sys.stderr)
-            else:
-                print(f"[Leapmotor] ⚠️ Pominięto (nieznany typ): {subject!r}", file=sys.stderr)
+        mail.logout()
 
     except Exception as e:
         import traceback
