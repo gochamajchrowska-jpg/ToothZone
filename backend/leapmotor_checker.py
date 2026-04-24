@@ -112,13 +112,12 @@ def fetch_leapmotor_emails():
         else:
             criteria = f'FROM "{LEAPMOTOR_SENDER}"'
 
-        status, data = mail.search(None, criteria)
-        if status != "OK":
+        if not all_mail_ids:
             print("[Leapmotor] Brak wyników.", file=sys.stderr)
             return []
 
-        mail_ids = data[0].split()
-        print(f"[Leapmotor] Znaleziono {len(mail_ids)} maili.", file=sys.stderr)
+        mail_ids = sorted(all_mail_ids)
+        print(f"[Leapmotor] Znaleziono łącznie {len(mail_ids)} unikalnych maili.", file=sys.stderr)
 
         for mail_id in mail_ids:
             status, msg_data = mail.fetch(mail_id, "(RFC822)")
