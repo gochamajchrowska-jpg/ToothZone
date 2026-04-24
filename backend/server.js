@@ -29,7 +29,11 @@ async function connectMongo() {
     return;
   }
   try {
-    const client = new MongoClient(MONGO_URI, { serverSelectionTimeoutMS: 10000 });
+    const client = new MongoClient(MONGO_URI, {
+      serverSelectionTimeoutMS: 10000,
+      tls: true,
+      tlsAllowInvalidCertificates: false,
+    });
     await client.connect();
     db  = client.db(DB_NAME);
     col = db.collection(COL_NAME);
