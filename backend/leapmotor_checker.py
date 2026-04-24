@@ -220,7 +220,9 @@ def fetch_leapmotor_emails():
                 print(f"[Leapmotor] ⚠️ Pominięto (nieznany typ): {subject!r}", file=sys.stderr)
 
     except Exception as e:
+        import traceback
         print(f"[Leapmotor] Błąd: {type(e).__name__}: {e}", file=sys.stderr)
+        traceback.print_exc(file=sys.stderr)
         sys.exit(1)
 
     result = sorted(sessions.values(), key=lambda s: s["date"], reverse=True)
