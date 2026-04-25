@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-greenway_checker.py — Sesje ładowania GreenWay
+greenway_checker.py - Sesje ladowania GreenWay
 Pobiera podsumowania sesji z bok@greenwaypolska.pl przez Gmail IMAP.
 argv: email password [imap_server] [imap_port] [since_days]
 """
@@ -48,32 +48,108 @@ def get_html_body(msg):
 
 
 def parse_greenway_session(html, date_str, mail_id):
-    """Parsuje HTML maila GreenWay i zwraca dane sesji."""
+    """
+    Obsluguje dwa formaty maili GreenWay:
+    Stary: "Stacja: X  Typ zlacza: Y  Czas ladowania: Z  Doladowana energia: W  Szacowana oplata: K PLN"
+    Nowy:  etykiety i wartosci w osobnych liniach, "Calkowity koszt sesji" jako sekcja
+    """
     try:
         soup = BeautifulSoup(html, "html.parser")
-        text = soup.get_text(separator="\n")
+        lines = [l.strip() for l in soup.get_text(separator="\n").split("\n") if l.strip()]
+        text  = " ".join(lines)
     except Exception:
-        # Fallback — regex na surowym HTML
-        text = re.sub(r"<[^>]+>", " ", html)
+        text  = re.sub(r"<[^>]+>", " ", html)
+        text  = re.sub(r"\s+", " ", text)
+        lines = text.split(" ")
 
-    def find_val(pattern, txt):
-        m = re.search(pattern, txt, re.IGNORECASE | re.UNICODE)
-        return m.group(1).strip() if m else None
+    def find_inline(patterns):
+        for pat in patterns:
+            m = re.search(pat, text, re.IGNORECASE)
+            if m: return m.group(1).strip()
+        return None
 
-    stacja    = find_val(r"Stacja:\s*(.+?)(?:\n|$)", text)
-    zlacze    = find_val(r"Typ z[łl]ącza:\s*(.+?)(?:\n|$)", text)
-    czas_str  = find_val(r"Czas [łl]adowania:\s*(.+?)(?:\n|$)", text)
-    energia   = find_val(r"Do[łl]adowana energia:\s*(.+?)(?:\n|$)", text)
+    # ── Stacja ──
+    # Stary format: "Stacja: Aldi..."
+    stacja = find_inline([r"Stacja:\s*([^:]+?)(?=Typ|Czas|$)"])
+    if not stacja:
+        # Nowy format: po linii "Rodzaj lokalizacji" jest nazwa stacji
+        for i, line in enumerate(lines):
+            if line.lower() == "rodzaj lokalizacji":
+                if i + 1 < len(lines):
+                    stacja = lines[i + 1].strip()
+                break
 
-    # Parsuj energię do liczby (np. "1,21 kWh" → 1.21)
+    # ── Zlacze ──
+    zlacze = find_inline([r"Typ z[l\u0142][a\u0105]cza:\s*(\S+)"])
+    if not zlacze:
+        for line in lines:
+            if re.match(r"^Type[12]\w*$", line):
+                zlacze = line
+                break
+
+    # ── Energia ──
+    energia = find_inline([r"Do[l\u0142]adowana energia:\s*([\d,\.]+ kWh)"])
+    if not energia:
+        # Nowy format: po "Lacznie pobrana energia" sa 2 etykiety, potem wartosci kWh
+        for i, line in enumerate(lines):
+            if "cznie pobrana energia" in line.lower():
+                for j in range(i + 1, min(i + 8, len(lines))):
+                    if re.match(r"[\d,\.]+ kWh", lines[j]):
+                        energia = lines[j]
+                        break
+                break
+
+    # ── Czas ──
+    czas_str = find_inline([r"Czas [l\u0142]adowania:\s*(\d+\s*min[^\.]*\.?)"])
+    if not czas_str:
+        # Nowy format: po "Czas trwania" szukaj "X,XX min"
+        for i, line in enumerate(lines):
+            if "czas trwania" in line.lower():
+                for j in range(i + 1, min(i + 10, len(lines))):
+                    if re.match(r"[\d]+[,\.][\d]+ min", lines[j]):
+                        czas_str = lines[j]
+                        break
+                break
+
+    # ── Data ──
+    date_match = re.search(r"(\d{2}\.\d{2}\.\d{4})\s+\d{2}:\d{2}", text)
+    if date_match:
+        date_str = date_match.group(1)
+
+    # ── Koszt ──
+    # Stary: "Szacowana oplata: 2,36 PLN"
+    koszt_str = find_inline([r"Szacowana op[l\u0142]ata:\s*([\d,\.]+ PLN)"])
+    if not koszt_str:
+        # Nowy: po "Calkowity koszt sesji" sa 3 etykiety, potem wartosc PLN
+        for i, line in enumerate(lines):
+            if "calkowity koszt" in line.lower() or "ca\u0142kowity koszt" in line.lower():
+                for j in range(i + 1, min(i + 8, len(lines))):
+                    if re.match(r"[\d,\.]+ PLN", lines[j]):
+                        koszt_str = lines[j]
+                        break
+                break
+
+    # ── Parsuj liczby ──
     energia_kwh = None
     if energia:
-        m = re.search(r"([\d,\.]+)", energia)
+        m = re.search(r"([\d,]+)", energia)
         if m:
-            energia_kwh = float(m.group(1).replace(",", "."))
+            try: energia_kwh = float(m.group(1).replace(",", "."))
+            except: pass
+
+    koszt = None
+    if koszt_str:
+        m = re.search(r"([\d,]+)", koszt_str)
+        if m:
+            try: koszt = float(m.group(1).replace(",", "."))
+            except: pass
+
+    # Jesli brak kluczowych danych — pomij
+    if not energia_kwh and not stacja:
+        return None
 
     return {
-        "id":          f"gw_{mail_id}",
+        "id":          "gw_" + str(mail_id),
         "date":        date_str,
         "source":      "greenway",
         "stacja":      stacja or "—",
@@ -81,6 +157,8 @@ def parse_greenway_session(html, date_str, mail_id):
         "czas":        czas_str or "—",
         "energia_kwh": energia_kwh,
         "energia_str": energia or "—",
+        "koszt":       koszt,
+        "koszt_str":   koszt_str or "—",
     }
 
 
@@ -88,20 +166,18 @@ def fetch_greenway_sessions():
     sessions = []
 
     try:
-        print(f"[GreenWay] Łączę z {IMAP_SERVER}:{IMAP_PORT}...", file=sys.stderr)
+        print("[GreenWay] Lacze z " + IMAP_SERVER + ":" + str(IMAP_PORT) + "...", file=sys.stderr)
         mail = imaplib.IMAP4_SSL(IMAP_SERVER, IMAP_PORT)
         mail.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
         print("[GreenWay] Zalogowano.", file=sys.stderr)
 
         mail.select("INBOX", readonly=True)
 
-        # Szukaj maili od GreenWay
         if SINCE_DAYS:
             since_date = (datetime.now() - timedelta(days=SINCE_DAYS)).strftime("%d-%b-%Y")
-            criteria = f'FROM "{GREENWAY_SENDER}" SINCE {since_date}'
-            print(f"[GreenWay] Szukam od {since_date}", file=sys.stderr)
+            criteria = 'FROM "' + GREENWAY_SENDER + '" SINCE ' + since_date
         else:
-            criteria = f'FROM "{GREENWAY_SENDER}"'
+            criteria = 'FROM "' + GREENWAY_SENDER + '"'
 
         status, data = mail.search(None, criteria)
         if status != "OK" or not data[0]:
@@ -109,7 +185,7 @@ def fetch_greenway_sessions():
             return []
 
         mail_ids = data[0].split()
-        print(f"[GreenWay] Znaleziono {len(mail_ids)} maili.", file=sys.stderr)
+        print("[GreenWay] Znaleziono " + str(len(mail_ids)) + " maili.", file=sys.stderr)
 
         for mid in mail_ids:
             try:
@@ -119,7 +195,6 @@ def fetch_greenway_sessions():
 
                 msg = email.message_from_bytes(msg_data[0][1])
 
-                # Data
                 try:
                     parsed_date = email.utils.parsedate_to_datetime(msg.get("Date", ""))
                     date_str = parsed_date.strftime("%d.%m.%Y")
@@ -132,32 +207,31 @@ def fetch_greenway_sessions():
 
                 session = parse_greenway_session(html, date_str, mid.decode())
                 if session is None:
-                    print(f"[GreenWay] ⚠️ Pominięto mail #{mid.decode()} — brak danych sesji", file=sys.stderr)
+                    print("[GreenWay] Pominieto mail #" + mid.decode() + " — brak danych sesji", file=sys.stderr)
                     continue
                 sessions.append(session)
-                print(f"[GreenWay] ✅ {session['date']} | {session['stacja']} | {session['energia_str']}", file=sys.stderr)
+                print("[GreenWay] OK " + session["date"] + " | " + session["stacja"] + " | " + session["energia_str"], file=sys.stderr)
 
             except Exception as e:
-                print(f"[GreenWay] Błąd maila #{mid}: {e}", file=sys.stderr)
+                print("[GreenWay] Blad maila #" + mid.decode() + ": " + str(e), file=sys.stderr)
                 continue
 
         mail.logout()
 
     except Exception as e:
         import traceback
-        print(f"[GreenWay] Błąd: {type(e).__name__}: {e}", file=sys.stderr)
+        print("[GreenWay] Blad: " + str(type(e).__name__) + ": " + str(e), file=sys.stderr)
         traceback.print_exc(file=sys.stderr)
         sys.exit(1)
 
-    # Sortuj od najnowszych
-    sessions.sort(key=lambda s: s["date"].split(".")[::-1], reverse=True)
-    print(f"[GreenWay] Sesje: {len(sessions)}", file=sys.stderr)
+    sessions.sort(key=lambda s: list(reversed(s["date"].split("."))), reverse=True)
+    print("[GreenWay] Sesje: " + str(len(sessions)), file=sys.stderr)
     return sessions
 
 
 if __name__ == "__main__":
     if not EMAIL_ADDRESS or not EMAIL_PASSWORD:
-        print("[Błąd] Brak danych logowania", file=sys.stderr)
+        print("[Blad] Brak danych logowania", file=sys.stderr)
         sys.exit(1)
     sessions = fetch_greenway_sessions()
     print(json.dumps(sessions, ensure_ascii=False, indent=2))
