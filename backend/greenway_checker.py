@@ -131,8 +131,11 @@ def fetch_greenway_sessions():
                     continue
 
                 session = parse_greenway_session(html, date_str, mid.decode())
+                if session is None:
+                    print(f"[GreenWay] ⚠️ Pominięto mail #{mid.decode()} — brak danych sesji", file=sys.stderr)
+                    continue
                 sessions.append(session)
-                print(f"[GreenWay] ✅ {date_str} | {session['stacja']} | {session['energia_str']}", file=sys.stderr)
+                print(f"[GreenWay] ✅ {session['date']} | {session['stacja']} | {session['energia_str']}", file=sys.stderr)
 
             except Exception as e:
                 print(f"[GreenWay] Błąd maila #{mid}: {e}", file=sys.stderr)
