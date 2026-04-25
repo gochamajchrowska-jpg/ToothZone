@@ -120,3 +120,19 @@ export async function refreshLeapmotorSessions(token) {
   });
   return handleResponse(res);
 }
+
+// ── GreenWay ──────────────────────────────────────────────────
+export async function getGreenwaySessions(token) {
+  const res = await fetch(`${BASE_URL}/api/greenway/sessions`, {
+    headers: authHeaders(token),
+  });
+  return handleResponse(res);
+}
+
+export async function refreshGreenwaySessions(token) {
+  const res = await fetch(`${BASE_URL}/api/greenway/sessions/refresh`, {
+    method: "POST",
+    headers: authHeaders(token),
+  });
+  return handleResponse(res);
+}

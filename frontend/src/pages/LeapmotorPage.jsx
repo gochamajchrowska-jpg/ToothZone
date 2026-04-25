@@ -4,7 +4,7 @@
 
 import React, { useEffect, useState, useMemo } from "react";
 import { useAuth } from "../App";
-import { getLeapmotorSessions, refreshLeapmotorSessions } from "../api";
+import { getLeapmotorSessions, refreshLeapmotorSessions, getGreenwaySessions, refreshGreenwaySessions } from "../api";
 import { useServerSync } from "../hooks/useServerSync";
 import { todayIso, formatDate, toIsoDate } from "../utils/dates";
 import "../styles/leapmotor.css";
@@ -101,6 +101,12 @@ export default function LeapmotorPage() {
   const [page,        setPage]        = useState(1);
   const PAGE_SIZE = 10;
 
+  // GreenWay sessions
+  const [gwSessions,   setGwSessions]   = useState([]);
+  const [gwLoading,    setGwLoading]    = useState(true);
+  const [gwRefreshing, setGwRefreshing] = useState(false);
+  const [gwError,      setGwError]      = useState("");
+
   // Overrides (edycje/usunięcia) — synchronizowane z serwerem
   const { data: syncData, update: syncUpdate } = useServerSync(token);
   const overrides = syncData?.leapmotorOverrides || {};
@@ -116,7 +122,20 @@ export default function LeapmotorPage() {
       .then((data) => { setSessions(Array.isArray(data) ? data : []); })
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
+
+    setGwLoading(true);
+    getGreenwaySessions(token)
+      .then((data) => { setGwSessions(Array.isArray(data) ? data : []); })
+      .catch(() => {})
+      .finally(() => setGwLoading(false));
   }, [token]);
+
+  async function handleRefreshGw() {
+    setGwRefreshing(true); setGwError("");
+    try { setGwSessions(await refreshGreenwaySessions(token)); }
+    catch (err) { setGwError(err.message); }
+    finally { setGwRefreshing(false); }
+  }
 
   async function handleRefresh() {
     setRefreshing(true); setError("");
@@ -184,8 +203,10 @@ export default function LeapmotorPage() {
     const totalCost = visible.reduce((sum, s) => sum + (calcCost(s) || 0), 0);
     const totalSessions = visible.length;
     const completedSessions = visible.filter((s) => s.level_end != null).length;
-    return { totalCost, totalSessions, completedSessions };
-  }, [mergedSessions, overrides]);
+    const gwTotalKwh  = gwSessions.reduce((sum, s) => sum + (s.energia_kwh || 0), 0);
+    const gwTotalCost = gwSessions.reduce((sum, s) => sum + (s.energia_kwh ? s.energia_kwh * 1.5 : 0), 0);
+    return { totalCost, totalSessions, completedSessions, gwTotalKwh, gwTotalCost };
+  }, [mergedSessions, overrides, gwSessions]);
 
   const visibleSessions = mergedSessions.filter((s) => !overrides[s.id]?._deleted);
   const totalPages     = Math.ceil(visibleSessions.length / PAGE_SIZE);
@@ -319,6 +340,73 @@ export default function LeapmotorPage() {
             <button className="page-btn" onClick={() => setPage(p=>p+1)} disabled={page===totalPages}>›</button>
             <button className="page-btn" onClick={() => setPage(totalPages)} disabled={page===totalPages}>»</button>
           </div>
+        </div>
+      )}
+      {/* ── GreenWay ── */}
+      <div className="messages-header" style={{marginTop:"32px"}}>
+        <h2 className="dash-section-title">🟢 GreenWay — ładowania na stacjach</h2>
+        <div className="header-actions">
+          <button className="btn-refresh" onClick={handleRefreshGw} disabled={gwRefreshing}>
+            {gwRefreshing ? "⏳ Sprawdzam..." : "🔄 Odśwież"}
+          </button>
+        </div>
+      </div>
+
+      {/* Statystyki GreenWay */}
+      {gwSessions.length > 0 && (
+        <div className="lp-stats" style={{marginBottom:"16px"}}>
+          <div className="lp-stat-card">
+            <div className="lp-stat-value">{gwSessions.length}</div>
+            <div className="lp-stat-label">Sesji GreenWay</div>
+          </div>
+          <div className="lp-stat-card">
+            <div className="lp-stat-value">{stats.gwTotalKwh.toFixed(2).replace(".",",")} kWh</div>
+            <div className="lp-stat-label">Łącznie energia</div>
+          </div>
+          <div className="lp-stat-card lp-stat-card--accent">
+            <div className="lp-stat-value">{stats.gwTotalCost.toFixed(2).replace(".",",")} zł</div>
+            <div className="lp-stat-label">Łączny koszt</div>
+          </div>
+        </div>
+      )}
+
+      {gwError   && <div className="vulcan-error-banner">⚠️ {gwError}</div>}
+      {gwLoading && <div className="vulcan-loading"><span className="vulcan-spinner">⏳</span> Ładowanie GreenWay…</div>}
+
+      {!gwLoading && gwSessions.length === 0 ? (
+        <div className="messages-empty">
+          <span>🟢</span><p>Brak sesji GreenWay.</p>
+          <p className="messages-empty-hint">Kliknij „Odśwież" aby pobrać dane z Gmaila.</p>
+        </div>
+      ) : !gwLoading && (
+        <div className="messages-table-wrap">
+          <table className="messages-table lp-table">
+            <thead>
+              <tr>
+                <th>Data</th>
+                <th>Stacja</th>
+                <th>Złącze</th>
+                <th>Czas</th>
+                <th>Energia</th>
+                <th>Koszt est.</th>
+              </tr>
+            </thead>
+            <tbody>
+              {gwSessions.map((s) => {
+                const cost = s.energia_kwh ? (s.energia_kwh * 1.5).toFixed(2).replace(".",",") : null;
+                return (
+                  <tr key={s.id}>
+                    <td className="lp-date">{s.date}</td>
+                    <td style={{fontSize:"0.82rem"}}>{s.stacja}</td>
+                    <td style={{fontSize:"0.78rem",color:"var(--clr-text-muted)"}}>{s.zlacze}</td>
+                    <td className="lp-time">{s.czas}</td>
+                    <td><span className="lp-badge lp-badge--end">{s.energia_str}</span></td>
+                    <td className="lp-cost">{cost ? <strong>{cost} zł</strong> : "—"}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       )}
     </>

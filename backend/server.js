@@ -146,15 +146,16 @@ function authenticateToken(req, res, next) {
 }
 
 // ── Python helper ─────────────────────────────────────────────
-function runPythonScript(scriptName, timeoutMs = 120000, sinceDays = null) {
+function runPythonScript(scriptName, timeoutMs = 120000, sinceDays = null,
+    emailAddr = null, emailPass = null, imapServer = null, imapPort = null) {
   return new Promise((resolve, reject) => {
     const scriptPath = path.join(__dirname, scriptName);
     const sinceArg   = sinceDays ? ` "${sinceDays}"` : "";
-    const emailAddr  = process.env.EMAIL_ADDRESS  || "";
-    const emailPass  = process.env.EMAIL_PASSWORD || "";
-    const imapServer = process.env.IMAP_SERVER    || "imap.wp.pl";
-    const imapPort   = process.env.IMAP_PORT      || "993";
-    const cmd = `python3 "${scriptPath}" "${emailAddr}" "${emailPass}" "${imapServer}" "${imapPort}"${sinceArg}`;
+    const addr   = emailAddr  || process.env.EMAIL_ADDRESS  || "";
+    const pass   = emailPass  || process.env.EMAIL_PASSWORD || "";
+    const server = imapServer || process.env.IMAP_SERVER    || "imap.wp.pl";
+    const port   = imapPort   || process.env.IMAP_PORT      || "993";
+    const cmd = `python3 "${scriptPath}" "${addr}" "${pass}" "${server}" "${port}"${sinceArg}`;
     exec(cmd, { timeout: timeoutMs }, (error, stdout, stderr) => {
       if (stderr) console.error(`[${scriptName}] stderr:\n${stderr}`);
       if (error)  return reject(new Error(`Błąd skryptu: ${error.message}`));
@@ -169,6 +170,7 @@ let messagesCache   = [];
 let paymentsCache   = [];
 let preschoolCache  = [];
 let leapmotorCache  = [];  // sesje ładowania Leapmotor
+let greenwayCache   = [];  // sesje ładowania GreenWay
 
 function deduplicatePayments(payments) {
   const toKey = (s) => (s || "").toLowerCase()
@@ -348,6 +350,27 @@ app.post("/api/leapmotor/sessions/refresh", authenticateToken, (req, res) => {
     .catch((err) => res.status(500).json({ error: err.message }));
 });
 
+// ── GreenWay ──────────────────────────────────────────────────
+app.get("/api/greenway/sessions", authenticateToken, (req, res) => {
+  res.json(greenwayCache);
+});
+
+app.post("/api/greenway/sessions/refresh", authenticateToken, (req, res) => {
+  const gwEmail = process.env.GREENWAY_EMAIL    || "";
+  const gwPass  = process.env.GREENWAY_PASSWORD || "";
+  if (!gwEmail || !gwPass)
+    return res.status(503).json({ error: "Brak konfiguracji Gmail." });
+  runPythonScript("greenway_checker.py", 180000, 90, gwEmail, gwPass, "imap.gmail.com", "993")
+    .then((data) => {
+      if (Array.isArray(data)) {
+        greenwayCache = data;
+        saveCache("greenway", greenwayCache);
+      }
+      res.json(greenwayCache);
+    })
+    .catch((err) => res.status(500).json({ error: err.message }));
+});
+
 // ── Odświeżanie w tle ────────────────────────────────────────
 async function refreshAllInBackground() {
   // Wiadomości — ostatnie 2 dni
@@ -412,11 +435,13 @@ async function start() {
       loadCache("payments"),
       loadCache("preschool"),
       loadCache("leapmotor"),
-    ]).then(([msgs, pays, pre, leap]) => {
+      loadCache("greenway"),
+    ]).then(([msgs, pays, pre, leap, gway]) => {
       if (msgs)  { messagesCache  = msgs;  console.log(`[Startup] Wiadomości z cache: ${msgs.length}`); }
       if (pays)  { paymentsCache  = pays;  console.log(`[Startup] Płatności szkoła z cache: ${pays.length}`); }
       if (pre)   { preschoolCache = pre;   console.log(`[Startup] Płatności przedszkole z cache: ${pre.length}`); }
       if (leap)  { leapmotorCache = leap;  console.log(`[Startup] Leapmotor z cache: ${leap.length}`); }
+      if (gway)  { greenwayCache  = gway;  console.log(`[Startup] GreenWay z cache: ${gway.length}`); }
       console.log("[Startup] Cache załadowany ✅ — dane dostępne od razu");
 
       // Odśwież dane z IMAP w tle (ostatnie 2 dni dla wiadomości, 35 dni dla płatności)
