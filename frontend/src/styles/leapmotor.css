@@ -13,19 +13,32 @@
 }
 .subpage-hero--leapmotor .dash-tagline { color: rgba(255,255,255,0.75); }
 
+/* ── Sekcje statystyk ────────────────────────────────────────── */
+.lp-stats-section {
+  margin: 16px 0 0;
+}
+.lp-stats-title {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--clr-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 8px;
+}
+
 /* ── Statystyki ──────────────────────────────────────────────── */
 .lp-stats {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
-  margin: 20px 0;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-bottom: 8px;
 }
 
 .lp-stat-card {
   background: var(--clr-surface);
   border: 1.5px solid var(--clr-border);
   border-radius: var(--radius-md);
-  padding: 16px;
+  padding: 12px;
   text-align: center;
 }
 
@@ -36,19 +49,31 @@
 }
 .lp-stat-card--accent .lp-stat-label { color: rgba(255,255,255,0.7); }
 
+.lp-stat-card--gw {
+  background: #064e3b;
+  border-color: #065f46;
+}
+
+.lp-stat-card--month {
+  background: var(--clr-primary-light);
+  border-color: var(--clr-primary);
+}
+.lp-stat-card--month .lp-stat-value { color: var(--clr-primary-dark); }
+.lp-stat-card--month .lp-stat-label { color: var(--clr-primary-dark); }
+
 .lp-stat-value {
-  font-size: 1.6rem;
+  font-size: 1.2rem;
   font-weight: 700;
   font-family: var(--font-display);
   line-height: 1.2;
 }
 
 .lp-stat-label {
-  font-size: 0.72rem;
+  font-size: 0.65rem;
   color: var(--clr-text-muted);
   margin-top: 4px;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.04em;
   font-weight: 600;
 }
 
@@ -106,44 +131,69 @@
 @media (max-width: 640px) {
   .lp-stats {
     grid-template-columns: 1fr 1fr;
+    gap: 6px;
   }
-  .lp-stat-card--accent {
-    grid-column: 1 / -1;
-  }
-  .lp-stat-value { font-size: 1.3rem; }
+  .lp-stat-value { font-size: 1rem; }
+  .lp-stat-label { font-size: 0.6rem; }
+  .lp-stat-card  { padding: 10px 8px; }
 
-  /* Tabela → karty */
+  /* Leapmotor tabela → karty 2-wierszowe */
+  .lp-table { display: block; }
   .lp-table thead { display: none; }
-  .lp-table tbody { display: flex; flex-direction: column; gap: 8px; }
+  .lp-table tbody { display: flex; flex-direction: column; gap: 6px; }
   .lp-table tr {
     display: grid;
     grid-template-columns: 1fr auto;
-    grid-template-rows: auto auto auto;
+    grid-template-rows: auto auto;
     background: var(--clr-surface);
     border: 1.5px solid var(--clr-border);
     border-radius: var(--radius-md);
-    padding: 12px;
-    gap: 4px 8px;
+    padding: 10px 12px;
+    gap: 3px 8px;
   }
   .lp-table tr.lp-row--incomplete {
     border-color: #fcd34d;
     background: #fffbeb;
   }
-  .lp-table td { border: none; padding: 0; }
+  .lp-table td { border: none; padding: 0; display: block; }
 
   /* Wiersz 1: data + koszt */
-  .lp-date  { grid-column: 1; grid-row: 1; font-size: 0.9rem; }
-  .lp-cost  { grid-column: 2; grid-row: 1; font-size: 1rem; text-align: right; }
+  .lp-date  { grid-column: 1; grid-row: 1; font-size: 0.88rem; font-weight: 600; }
+  .lp-cost  { grid-column: 2; grid-row: 1; font-size: 0.95rem; text-align: right; align-self: center; }
 
-  /* Wiersz 2: czas + poziomy */
-  .lp-time  { grid-column: 1 / -1; grid-row: 2; font-size: 0.78rem; }
-
-  /* Wiersz 3: zużycie + akcja */
-  .lp-diff  { grid-column: 1; grid-row: 3; text-align: left; }
-  .lp-table td:last-child { grid-column: 2; grid-row: 3; text-align: right; }
-
-  /* Ukryj poziomy osobno — pokazane w czasie */
+  /* Wiersz 2: poziomy + zużycie + akcja */
+  .lp-time  {
+    grid-column: 1; grid-row: 2;
+    font-size: 0.75rem; color: var(--clr-text-muted);
+  }
+  .lp-table td:last-child { grid-column: 2; grid-row: 2; text-align: right; }
+  .lp-diff  { display: none; }
   .lp-level { display: none; }
 
   .lp-row { grid-template-columns: 1fr; }
+
+  /* GreenWay tabela → karty 2-wierszowe */
+  .lp-table-gw { display: block; }
+  .lp-table-gw thead { display: none; }
+  .lp-table-gw tbody { display: flex; flex-direction: column; gap: 6px; }
+  .lp-table-gw tr {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    grid-template-rows: auto auto;
+    background: var(--clr-surface);
+    border: 1.5px solid var(--clr-border);
+    border-radius: var(--radius-md);
+    padding: 10px 12px;
+    gap: 3px 8px;
+  }
+  .lp-table-gw td { border: none; padding: 0; display: block; }
+  /* Wiersz 1: stacja + koszt */
+  .lp-table-gw td:nth-child(1) { grid-column: 1; grid-row: 1; font-size: 0.82rem; font-weight: 600; }
+  .lp-table-gw td:nth-child(6) { grid-column: 2; grid-row: 1; text-align: right; align-self: center; }
+  /* Wiersz 2: data + energia */
+  .lp-table-gw td:nth-child(2) { grid-column: 1; grid-row: 2; font-size: 0.75rem; color: var(--clr-text-muted); }
+  .lp-table-gw td:nth-child(5) { grid-column: 2; grid-row: 2; text-align: right; }
+  /* Ukryj złącze i czas */
+  .lp-table-gw td:nth-child(3),
+  .lp-table-gw td:nth-child(4) { display: none; }
 }

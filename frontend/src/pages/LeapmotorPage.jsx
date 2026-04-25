@@ -99,7 +99,7 @@ export default function LeapmotorPage() {
   const [error,       setError]       = useState("");
   const [editSession, setEditSession] = useState(null);
   const [page,        setPage]        = useState(1);
-  const PAGE_SIZE = 10;
+  const PAGE_SIZE = 5;
 
   // GreenWay sessions
   const [gwSessions,   setGwSessions]   = useState([]);
@@ -199,17 +199,51 @@ export default function LeapmotorPage() {
 
   // Statystyki
   const stats = useMemo(() => {
+    const now = new Date();
+    const currentMonth = String(now.getMonth() + 1).padStart(2, "0");
+    const currentYear  = String(now.getFullYear());
+    const isThisMonth  = (dateStr) => {
+      if (!dateStr || dateStr === "—") return false;
+      const [d, m, y] = dateStr.split(".");
+      return m === currentMonth && y === currentYear;
+    };
+
     const visible = mergedSessions.filter((s) => !overrides[s.id]?._deleted);
-    const totalCost = visible.reduce((sum, s) => sum + (calcCost(s) || 0), 0);
+
+    // Leapmotor — sumaryczne
+    const totalCost     = visible.reduce((sum, s) => sum + (calcCost(s) || 0), 0);
     const totalSessions = visible.length;
     const completedSessions = visible.filter((s) => s.level_end != null).length;
+
+    // Leapmotor — bieżący miesiąc
+    const monthSessions = visible.filter((s) => isThisMonth(s.date));
+    const monthCost     = monthSessions.reduce((sum, s) => sum + (calcCost(s) || 0), 0);
+    const monthCount    = monthSessions.length;
+
+    // GreenWay — sumaryczne
     const gwTotalKwh  = gwSessions.reduce((sum, s) => sum + (s.energia_kwh || 0), 0);
     const gwTotalCost = gwSessions.reduce((sum, s) => {
       if (s.koszt != null) return sum + s.koszt;
       if (s.energia_kwh) return sum + s.energia_kwh * 1.5;
       return sum;
     }, 0);
-    return { totalCost, totalSessions, completedSessions, gwTotalKwh, gwTotalCost };
+
+    // GreenWay — bieżący miesiąc
+    const gwMonthSessions = gwSessions.filter((s) => isThisMonth(s.date));
+    const gwMonthKwh  = gwMonthSessions.reduce((sum, s) => sum + (s.energia_kwh || 0), 0);
+    const gwMonthCost = gwMonthSessions.reduce((sum, s) => {
+      if (s.koszt != null) return sum + s.koszt;
+      if (s.energia_kwh) return sum + s.energia_kwh * 1.5;
+      return sum;
+    }, 0);
+    const gwMonthCount = gwMonthSessions.length;
+
+    return {
+      totalCost, totalSessions, completedSessions,
+      monthCost, monthCount,
+      gwTotalKwh, gwTotalCost,
+      gwMonthKwh, gwMonthCost, gwMonthCount,
+    };
   }, [mergedSessions, overrides, gwSessions]);
 
   const visibleSessions = mergedSessions.filter((s) => !overrides[s.id]?._deleted);
@@ -232,19 +266,49 @@ export default function LeapmotorPage() {
         <p className="dash-tagline">Historia i koszty ładowania pojazdu.</p>
       </section>
 
-      {/* ── Statystyki ── */}
-      <div className="lp-stats">
-        <div className="lp-stat-card">
-          <div className="lp-stat-value">{stats.totalSessions}</div>
-          <div className="lp-stat-label">Sesji łącznie</div>
+      {/* ── Statystyki — Leapmotor ── */}
+      <div className="lp-stats-section">
+        <div className="lp-stats-title">⚡ Leapmotor C10</div>
+        <div className="lp-stats">
+          <div className="lp-stat-card">
+            <div className="lp-stat-value">{stats.totalSessions}</div>
+            <div className="lp-stat-label">Sesji łącznie</div>
+          </div>
+          <div className="lp-stat-card lp-stat-card--accent">
+            <div className="lp-stat-value">{stats.totalCost.toFixed(2).replace(".", ",")} zł</div>
+            <div className="lp-stat-label">Koszt łączny</div>
+          </div>
+          <div className="lp-stat-card lp-stat-card--month">
+            <div className="lp-stat-value">{stats.monthCount}</div>
+            <div className="lp-stat-label">Ten miesiąc (sesji)</div>
+          </div>
+          <div className="lp-stat-card lp-stat-card--month">
+            <div className="lp-stat-value">{stats.monthCost.toFixed(2).replace(".", ",")} zł</div>
+            <div className="lp-stat-label">Ten miesiąc (koszt)</div>
+          </div>
         </div>
-        <div className="lp-stat-card">
-          <div className="lp-stat-value">{stats.completedSessions}</div>
-          <div className="lp-stat-label">Zakończonych</div>
-        </div>
-        <div className="lp-stat-card lp-stat-card--accent">
-          <div className="lp-stat-value">{stats.totalCost.toFixed(2).replace(".", ",")} zł</div>
-          <div className="lp-stat-label">Łączny koszt</div>
+      </div>
+
+      {/* ── Statystyki — GreenWay ── */}
+      <div className="lp-stats-section">
+        <div className="lp-stats-title">🟢 GreenWay</div>
+        <div className="lp-stats">
+          <div className="lp-stat-card">
+            <div className="lp-stat-value">{gwSessions.length}</div>
+            <div className="lp-stat-label">Sesji łącznie</div>
+          </div>
+          <div className="lp-stat-card lp-stat-card--accent lp-stat-card--gw">
+            <div className="lp-stat-value">{stats.gwTotalCost.toFixed(2).replace(".", ",")} zł</div>
+            <div className="lp-stat-label">Koszt łączny</div>
+          </div>
+          <div className="lp-stat-card lp-stat-card--month">
+            <div className="lp-stat-value">{stats.gwMonthCount}</div>
+            <div className="lp-stat-label">Ten miesiąc (sesji)</div>
+          </div>
+          <div className="lp-stat-card lp-stat-card--month">
+            <div className="lp-stat-value">{stats.gwMonthCost.toFixed(2).replace(".", ",")} zł</div>
+            <div className="lp-stat-label">Ten miesiąc (koszt)</div>
+          </div>
         </div>
       </div>
 
@@ -356,23 +420,7 @@ export default function LeapmotorPage() {
         </div>
       </div>
 
-      {/* Statystyki GreenWay */}
-      {gwSessions.length > 0 && (
-        <div className="lp-stats" style={{marginBottom:"16px"}}>
-          <div className="lp-stat-card">
-            <div className="lp-stat-value">{gwSessions.length}</div>
-            <div className="lp-stat-label">Sesji GreenWay</div>
-          </div>
-          <div className="lp-stat-card">
-            <div className="lp-stat-value">{stats.gwTotalKwh.toFixed(2).replace(".",",")} kWh</div>
-            <div className="lp-stat-label">Łącznie energia</div>
-          </div>
-          <div className="lp-stat-card lp-stat-card--accent">
-            <div className="lp-stat-value">{stats.gwTotalCost.toFixed(2).replace(".",",")} zł</div>
-            <div className="lp-stat-label">Łączny koszt</div>
-          </div>
-        </div>
-      )}
+
 
       {gwError   && <div className="vulcan-error-banner">⚠️ {gwError}</div>}
       {gwLoading && <div className="vulcan-loading"><span className="vulcan-spinner">⏳</span> Ładowanie GreenWay…</div>}
@@ -384,7 +432,7 @@ export default function LeapmotorPage() {
         </div>
       ) : !gwLoading && (
         <div className="messages-table-wrap">
-          <table className="messages-table lp-table">
+          <table className="messages-table lp-table lp-table-gw">
             <thead>
               <tr>
                 <th>Data</th>
