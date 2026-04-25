@@ -99,6 +99,7 @@ export default function LeapmotorPage() {
   const [error,       setError]       = useState("");
   const [editSession, setEditSession] = useState(null);
   const [page,        setPage]        = useState(1);
+  const [gwPage,      setGwPage]      = useState(1);
   const PAGE_SIZE = 5;
 
   // GreenWay sessions
@@ -247,6 +248,8 @@ export default function LeapmotorPage() {
   }, [mergedSessions, overrides, gwSessions]);
 
   const visibleSessions = mergedSessions.filter((s) => !overrides[s.id]?._deleted);
+  const gwTotalPages   = Math.ceil(gwSessions.length / PAGE_SIZE);
+  const gwPagedSessions = gwSessions.slice((gwPage - 1) * PAGE_SIZE, gwPage * PAGE_SIZE);
   const totalPages     = Math.ceil(visibleSessions.length / PAGE_SIZE);
   const pagedSessions  = visibleSessions.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
@@ -444,8 +447,10 @@ export default function LeapmotorPage() {
               </tr>
             </thead>
             <tbody>
-              {gwSessions.map((s) => {
-                const cost = s.energia_kwh ? (s.energia_kwh * 1.5).toFixed(2).replace(".",",") : null;
+              {gwPagedSessions.map((s) => {
+                const koszt = s.koszt != null
+                  ? s.koszt.toFixed(2).replace(".", ",") + " zł"
+                  : s.energia_kwh ? (s.energia_kwh * 1.5).toFixed(2).replace(".", ",") + " zł" : null;
                 return (
                   <tr key={s.id}>
                     <td className="lp-date">{s.date}</td>
@@ -453,12 +458,30 @@ export default function LeapmotorPage() {
                     <td style={{fontSize:"0.78rem",color:"var(--clr-text-muted)"}}>{s.zlacze}</td>
                     <td className="lp-time">{s.czas}</td>
                     <td><span className="lp-badge lp-badge--end">{s.energia_str}</span></td>
-                    <td className="lp-cost">{cost ? <strong>{cost} zł</strong> : "—"}</td>
+                    <td className="lp-cost">{koszt ? <strong>{koszt}</strong> : "—"}</td>
                   </tr>
                 );
               })}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {!gwLoading && gwTotalPages > 1 && (
+        <div className="pagination" style={{marginTop:"12px"}}>
+          <span className="pagination-info">
+            {(gwPage-1)*PAGE_SIZE+1}–{Math.min(gwPage*PAGE_SIZE, gwSessions.length)} z {gwSessions.length}
+          </span>
+          <div className="pagination-controls">
+            <button className="page-btn" onClick={() => setGwPage(1)} disabled={gwPage===1}>«</button>
+            <button className="page-btn" onClick={() => setGwPage(p=>p-1)} disabled={gwPage===1}>‹</button>
+            {Array.from({length: gwTotalPages}, (_,i) => i+1).map(p => (
+              <button key={p} className={`page-btn ${p===gwPage?"page-btn--active":""}`}
+                onClick={() => setGwPage(p)}>{p}</button>
+            ))}
+            <button className="page-btn" onClick={() => setGwPage(p=>p+1)} disabled={gwPage===gwTotalPages}>›</button>
+            <button className="page-btn" onClick={() => setGwPage(gwTotalPages)} disabled={gwPage===gwTotalPages}>»</button>
+          </div>
         </div>
       )}
     </>
