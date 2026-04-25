@@ -301,25 +301,25 @@ export default function LeapmotorPage() {
             </tbody>
           </table>
         </div>
+      )}
 
-        {/* Stronicowanie */}
-        {totalPages > 1 && (
-          <div className="pagination" style={{marginTop:"12px"}}>
-            <span className="pagination-info">
-              {(page-1)*PAGE_SIZE+1}–{Math.min(page*PAGE_SIZE, visibleSessions.length)} z {visibleSessions.length}
-            </span>
-            <div className="pagination-controls">
-              <button className="page-btn" onClick={() => setPage(1)} disabled={page===1}>«</button>
-              <button className="page-btn" onClick={() => setPage(p=>p-1)} disabled={page===1}>‹</button>
-              {Array.from({length: totalPages}, (_,i) => i+1).map(p => (
-                <button key={p} className={`page-btn ${p===page?"page-btn--active":""}`}
-                  onClick={() => setPage(p)}>{p}</button>
-              ))}
-              <button className="page-btn" onClick={() => setPage(p=>p+1)} disabled={page===totalPages}>›</button>
-              <button className="page-btn" onClick={() => setPage(totalPages)} disabled={page===totalPages}>»</button>
-            </div>
+      {/* Stronicowanie */}
+      {!loading && totalPages > 1 && (
+        <div className="pagination" style={{marginTop:"12px"}}>
+          <span className="pagination-info">
+            {(page-1)*PAGE_SIZE+1}–{Math.min(page*PAGE_SIZE, visibleSessions.length)} z {visibleSessions.length}
+          </span>
+          <div className="pagination-controls">
+            <button className="page-btn" onClick={() => setPage(1)} disabled={page===1}>«</button>
+            <button className="page-btn" onClick={() => setPage(p=>p-1)} disabled={page===1}>‹</button>
+            {Array.from({length: totalPages}, (_,i) => i+1).map(p => (
+              <button key={p} className={`page-btn ${p===page?"page-btn--active":""}`}
+                onClick={() => setPage(p)}>{p}</button>
+            ))}
+            <button className="page-btn" onClick={() => setPage(p=>p+1)} disabled={page===totalPages}>›</button>
+            <button className="page-btn" onClick={() => setPage(totalPages)} disabled={page===totalPages}>»</button>
           </div>
-        )}
+        </div>
       )}
     </>
   );
