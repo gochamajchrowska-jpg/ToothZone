@@ -207,6 +207,24 @@ def fetch_leapmotor_emails():
 
         mail.logout()
 
+        # ── Post-processing: dopasuj osierocone sesje z tego samego dnia ──
+        # Zbierz niepołączone starty i końce
+        starts_only = [s for s in sessions.values() if s["level_start"] is not None and s["level_end"] is None]
+        ends_only   = [s for s in sessions.values() if s["level_start"] is None and s["level_end"] is not None]
+
+        for end_s in ends_only:
+            # Znajdź start z tego samego dnia
+            matching = [s for s in starts_only if s["date"] == end_s["date"] and s["level_end"] is None]
+            if matching:
+                # Weź start z najwcześniejszą godziną
+                best = sorted(matching, key=lambda x: x["time_start"] or "00:00")[0]
+                best["time_end"]  = end_s["time_end"]
+                best["level_end"] = end_s["level_end"]
+                # Usuń osierocony koniec
+                del sessions[end_s["id"]]
+                starts_only = [s for s in starts_only if s["id"] != best["id"]]
+                print(f"[Leapmotor] 🔗 Połączono: {best['date']} {best['time_start']}→{best['time_end']} {best['level_start']}%→{best['level_end']}%", file=sys.stderr)
+
     except Exception as e:
         import traceback
         print(f"[Leapmotor] Błąd: {type(e).__name__}: {e}", file=sys.stderr)
