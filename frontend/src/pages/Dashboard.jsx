@@ -173,8 +173,41 @@ export default function Dashboard() {
       {/* ── Strona główna: karty nawigacji + podgląd wydarzeń ── */}
       {!activeTab && (
         <>
+          {/* ── Podgląd wydarzeń — nad kartami, połączony z przyciskiem ── */}
+          <button
+            className="dash-events-preview"
+            onClick={() => setActiveTab("events")}
+          >
+            <div className="dash-events-preview-header">
+              <span className="dash-events-preview-title">
+                📅 Nadchodzące wydarzenia
+              </span>
+              {upcoming.length > 0 && (
+                <span className="dash-nav-card-badge" style={{position:"static"}}>
+                  {upcoming.length}
+                </span>
+              )}
+            </div>
+            {upcoming.length === 0 ? (
+              <p className="dash-events-empty">Brak nadchodzących wydarzeń</p>
+            ) : (
+              <div className="dash-events-preview-list">
+                {upcoming.slice(0, 3).map((ev) => (
+                  <div key={ev.id} className={`dash-event-row dash-event-row--${ev.category || "other"}`}>
+                    <span className="dash-event-row-dot" />
+                    <span className="dash-event-row-date">{ev.date}</span>
+                    <span className="dash-event-row-title">{ev.title}</span>
+                  </div>
+                ))}
+                {upcoming.length > 3 && (
+                  <div className="dash-event-row-more">+{upcoming.length - 3} więcej →</div>
+                )}
+              </div>
+            )}
+          </button>
+
           <div className="dash-nav-cards">
-            {NAV_CARDS.map((card) => (
+            {NAV_CARDS.filter(c => c.id !== "events").map((card) => (
               <button
                 key={card.id}
                 className="dash-nav-card"
@@ -187,11 +220,6 @@ export default function Dashboard() {
               >
                 <span className="dash-nav-card-icon">{card.icon}</span>
                 <span className="dash-nav-card-label">{card.label}</span>
-
-                {card.id === "events" && upcoming.length > 0 && (
-                  <span className="dash-nav-card-badge">{upcoming.length}</span>
-                )}
-
                 {card.id === "obligations" && oblSummary.count > 0 && (
                   <div className="dash-nav-card-obl">
                     {oblSummary.overdueCount > 0 && (
@@ -207,30 +235,6 @@ export default function Dashboard() {
               </button>
             ))}
           </div>
-
-          {/* ── Podgląd nadchodzących wydarzeń (max 20vh) ── */}
-          {upcoming.length > 0 && (
-            <div className="dash-events-preview">
-              <div className="dash-events-preview-header">
-                <span className="dash-events-preview-title">Najbliższe wydarzenia</span>
-                <button
-                  className="dash-events-preview-more"
-                  onClick={() => setActiveTab("events")}
-                >
-                  Wszystkie ({upcoming.length}) →
-                </button>
-              </div>
-              <div className="dash-events-preview-list">
-                {upcoming.slice(0, 3).map((ev) => (
-                  <div key={ev.id} className={`dash-event-row dash-event-row--${ev.category || "other"}`}>
-                    <span className="dash-event-row-dot" />
-                    <span className="dash-event-row-date">{ev.date}</span>
-                    <span className="dash-event-row-title">{ev.title}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
         </>
       )}
 
