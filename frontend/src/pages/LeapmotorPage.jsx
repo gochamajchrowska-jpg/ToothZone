@@ -428,7 +428,7 @@ export default function LeapmotorPage() {
         <div className="lp-stats-header">
           <div className="lp-stats-title">🟢 GreenWay</div>
           <button className="btn-refresh" onClick={handleRefreshGw} disabled={gwRefreshing} style={{fontSize:"0.78rem",padding:"4px 10px"}}>
-            {gwRefreshing?"⏳ Sprawdzam...":"🔄 Odśwież"}
+            {gwRefreshing?"⏳":"🔄"}
           </button>
         </div>
         <div className="lp-stats">
