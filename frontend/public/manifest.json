@@ -1,0 +1,10 @@
+{
+  "name": "Tooth Zone",
+  "short_name": "Tooth Zone",
+  "description": "Domowy budżet i organizacja rodziny",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#f8fafc",
+  "theme_color": "#6366f1",
+  "orientation": "portrait"
+}
