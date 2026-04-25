@@ -5,6 +5,7 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { useAuth } from "../App";
 import { getLeapmotorSessions, refreshLeapmotorSessions } from "../api";
+import { useServerSync } from "../hooks/useServerSync";
 import { todayIso, formatDate, toIsoDate } from "../utils/dates";
 import "../styles/leapmotor.css";
 
@@ -97,18 +98,17 @@ export default function LeapmotorPage() {
   const [refreshing,  setRefreshing]  = useState(false);
   const [error,       setError]       = useState("");
   const [editSession, setEditSession] = useState(null);
-  const [page, setPage]             = useState(1);
+  const [page,        setPage]        = useState(1);
   const PAGE_SIZE = 10;
 
-  // Ręcznie dodane / edytowane (localStorage)
-  const [overrides, setOverrides] = useState(() => {
-    try { return JSON.parse(localStorage.getItem("tz_leapmotor_overrides") || "{}"); }
-    catch { return {}; }
-  });
+  // Overrides (edycje/usunięcia) — synchronizowane z serwerem
+  const { data: syncData, update: syncUpdate } = useServerSync(token);
+  const overrides = syncData?.leapmotorOverrides || {};
 
-  useEffect(() => {
-    localStorage.setItem("tz_leapmotor_overrides", JSON.stringify(overrides));
-  }, [overrides]);
+  function setOverrides(updater) {
+    const next = typeof updater === "function" ? updater(overrides) : updater;
+    syncUpdate({ leapmotorOverrides: next });
+  }
 
   useEffect(() => {
     setLoading(true);

@@ -9,6 +9,7 @@ const EMPTY_DATA = {
   schoolEvents:    [],
   preschoolEvents: [],
   dashEvents:      [],
+  leapmotorOverrides: {},
   oblManual:       [],
   oblSchedules:    [],
   oblPaid:         [],
