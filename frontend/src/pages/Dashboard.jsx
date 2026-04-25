@@ -3,6 +3,7 @@
 // ============================================================
 
 import React, { useState, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import AppLayout from "../components/AppLayout";
 import ObligationsPage from "./ObligationsPage";
 import LeapmotorPage from "./LeapmotorPage";
@@ -97,6 +98,7 @@ export default function Dashboard() {
   const { token } = useAuth();
   const { data: syncData, update: syncUpdate } = useServerSync(token);
 
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState(null); // null = pokaż karty
   const [showModal, setShowModal] = useState(false);
   const [editEvent, setEditEvent] = useState(null);
@@ -138,7 +140,11 @@ export default function Dashboard() {
               key={card.id}
               className="dash-nav-card"
               style={{"--card-color": card.color, "--card-bg": card.bg}}
-              onClick={() => setActiveTab(card.id)}
+              onClick={() => {
+                if (card.id === "school") navigate("/school");
+                else if (card.id === "preschool") navigate("/preschool");
+                else setActiveTab(card.id);
+              }}
             >
               <span className="dash-nav-card-icon">{card.icon}</span>
               <span className="dash-nav-card-label">{card.label}</span>

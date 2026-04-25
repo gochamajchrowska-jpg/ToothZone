@@ -21,10 +21,10 @@ export default function AppLayout({ children }) {
     <div className="app-page">
 
       <header className="app-header">
-        <div className="app-logo">
-          <span className="app-logo-main">Tooth Zone</span>
-          <span className="app-logo-sub">Domowy budżet i organizacja rodziny</span>
-        </div>
+        <button className="app-logo app-logo--btn" onClick={() => window.location.reload()} title="Odśwież">
+          <span className="app-logo-main">🦷 Tooth Zone</span>
+          <span className="app-logo-sub">Kliknij aby odświeżyć</span>
+        </button>
         <div className="app-header-right">
           <span className="app-user-email">{userEmail}</span>
           <button className="btn-logout" onClick={handleLogout}>Wyloguj się</button>

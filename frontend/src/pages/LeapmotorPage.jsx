@@ -393,8 +393,8 @@ export default function LeapmotorPage() {
           <div className="lp-stats-title">⚡ Leapmotor C10</div>
           <div style={{display:"flex",gap:"6px"}}>
             <button className="btn-add" onClick={handleAddSession} style={{fontSize:"0.78rem",padding:"4px 10px"}}>+ Dodaj</button>
-            <button className="btn-refresh" onClick={handleRefresh} disabled={refreshing} style={{fontSize:"0.78rem",padding:"4px 10px"}}>
-              {refreshing?"⏳":"🔄"}
+            <button className="btn-icon-only" onClick={handleRefresh} disabled={refreshing} title="Odśwież Leapmotor">
+              {refreshing ? "⏳" : "🔄"}
             </button>
           </div>
         </div>
@@ -427,8 +427,8 @@ export default function LeapmotorPage() {
       <div className="lp-stats-section">
         <div className="lp-stats-header">
           <div className="lp-stats-title">🟢 GreenWay</div>
-          <button className="btn-refresh" onClick={handleRefreshGw} disabled={gwRefreshing} style={{fontSize:"0.78rem",padding:"4px 10px"}}>
-            {gwRefreshing?"⏳":"🔄"}
+          <button className="btn-icon-only" onClick={handleRefreshGw} disabled={gwRefreshing} title="Odśwież GreenWay">
+            {gwRefreshing ? "⏳" : "🔄"}
           </button>
         </div>
         <div className="lp-stats">
