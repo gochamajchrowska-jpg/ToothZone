@@ -1017,3 +1017,91 @@
   color: #991b1b;
   background: rgba(254,226,226,0.9);
 }
+
+/* ── Podgląd wydarzeń na głównej ─────────────────────────────── */
+.dash-events-preview {
+  background: var(--clr-surface);
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4) var(--space-5);
+  box-shadow: var(--shadow-xs);
+  max-height: 20vh;
+  overflow: hidden;
+}
+
+.dash-events-preview-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-3);
+}
+
+.dash-events-preview-title {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--clr-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.dash-events-preview-more {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--clr-primary);
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-body);
+  padding: 0;
+  transition: opacity 0.15s;
+}
+.dash-events-preview-more:hover { opacity: 0.7; }
+
+.dash-events-preview-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.dash-event-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--clr-border);
+}
+.dash-event-row:last-child { border-bottom: none; padding-bottom: 0; }
+
+.dash-event-row-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--clr-text-light);
+}
+.dash-event-row--school .dash-event-row-dot    { background: var(--clr-school); }
+.dash-event-row--preschool .dash-event-row-dot { background: var(--clr-preschool); }
+.dash-event-row--other .dash-event-row-dot     { background: var(--clr-primary); }
+
+.dash-event-row-date {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--clr-text-muted);
+  white-space: nowrap;
+  min-width: 75px;
+}
+
+.dash-event-row-title {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--clr-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .dash-events-preview { max-height: none; padding: var(--space-3) var(--space-4); }
+  .dash-event-row-date { min-width: 65px; font-size: 0.7rem; }
+  .dash-event-row-title { font-size: 0.8rem; }
+}

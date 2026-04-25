@@ -170,44 +170,68 @@ export default function Dashboard() {
       {showModal && <EventModal onClose={() => setShowModal(false)} onSave={handleSaveEvent} />}
       {editEvent && <EventModal existing={editEvent} onClose={() => setEditEvent(null)} onSave={handleSaveEvent} />}
 
-      {/* ── Strona główna: karty nawigacji ── */}
+      {/* ── Strona główna: karty nawigacji + podgląd wydarzeń ── */}
       {!activeTab && (
-        <div className="dash-nav-cards">
-          {NAV_CARDS.map((card) => (
-            <button
-              key={card.id}
-              className="dash-nav-card"
-              style={{"--card-color": card.color, "--card-bg": card.bg}}
-              onClick={() => {
-                if (card.id === "school") navigate("/school");
-                else if (card.id === "preschool") navigate("/preschool");
-                else setActiveTab(card.id);
-              }}
-            >
-              <span className="dash-nav-card-icon">{card.icon}</span>
-              <span className="dash-nav-card-label">{card.label}</span>
+        <>
+          <div className="dash-nav-cards">
+            {NAV_CARDS.map((card) => (
+              <button
+                key={card.id}
+                className="dash-nav-card"
+                style={{"--card-color": card.color, "--card-bg": card.bg}}
+                onClick={() => {
+                  if (card.id === "school") navigate("/school");
+                  else if (card.id === "preschool") navigate("/preschool");
+                  else setActiveTab(card.id);
+                }}
+              >
+                <span className="dash-nav-card-icon">{card.icon}</span>
+                <span className="dash-nav-card-label">{card.label}</span>
 
-              {/* Badge: liczba nadchodzących wydarzeń */}
-              {card.id === "events" && upcoming.length > 0 && (
-                <span className="dash-nav-card-badge">{upcoming.length}</span>
-              )}
+                {card.id === "events" && upcoming.length > 0 && (
+                  <span className="dash-nav-card-badge">{upcoming.length}</span>
+                )}
 
-              {/* Podsumowanie zobowiązań */}
-              {card.id === "obligations" && oblSummary.count > 0 && (
-                <div className="dash-nav-card-obl">
-                  {oblSummary.overdueCount > 0 && (
-                    <span className="dash-nav-card-obl-item dash-nav-card-obl--overdue">
-                      ⚠️ {oblSummary.overdueCount} po terminie · {oblSummary.overdue.toFixed(2).replace(".", ",")} zł
+                {card.id === "obligations" && oblSummary.count > 0 && (
+                  <div className="dash-nav-card-obl">
+                    {oblSummary.overdueCount > 0 && (
+                      <span className="dash-nav-card-obl-item dash-nav-card-obl--overdue">
+                        ⚠️ {oblSummary.overdueCount} po terminie · {oblSummary.overdue.toFixed(2).replace(".",",")} zł
+                      </span>
+                    )}
+                    <span className="dash-nav-card-obl-item">
+                      Łącznie: {oblSummary.total.toFixed(2).replace(".",",")} zł
                     </span>
-                  )}
-                  <span className="dash-nav-card-obl-item">
-                    Łącznie: {oblSummary.total.toFixed(2).replace(".", ",")} zł
-                  </span>
-                </div>
-              )}
-            </button>
-          ))}
-        </div>
+                  </div>
+                )}
+              </button>
+            ))}
+          </div>
+
+          {/* ── Podgląd nadchodzących wydarzeń (max 20vh) ── */}
+          {upcoming.length > 0 && (
+            <div className="dash-events-preview">
+              <div className="dash-events-preview-header">
+                <span className="dash-events-preview-title">Najbliższe wydarzenia</span>
+                <button
+                  className="dash-events-preview-more"
+                  onClick={() => setActiveTab("events")}
+                >
+                  Wszystkie ({upcoming.length}) →
+                </button>
+              </div>
+              <div className="dash-events-preview-list">
+                {upcoming.slice(0, 3).map((ev) => (
+                  <div key={ev.id} className={`dash-event-row dash-event-row--${ev.category || "other"}`}>
+                    <span className="dash-event-row-dot" />
+                    <span className="dash-event-row-date">{ev.date}</span>
+                    <span className="dash-event-row-title">{ev.title}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </>
       )}
 
       {/* ── Widok aktywnej zakładki ── */}
