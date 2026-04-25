@@ -102,6 +102,10 @@ export default function LeapmotorPage() {
   const [gwPage,      setGwPage]      = useState(1);
   const PAGE_SIZE = 5;
 
+  // Widoczność tabel: null=ukryta, "all"=wszystkie, "month"=ten miesiąc
+  const [lpView,  setLpView]  = useState(null);
+  const [gwView,  setGwView]  = useState(null);
+
   // GreenWay sessions
   const [gwSessions,   setGwSessions]   = useState([]);
   const [gwLoading,    setGwLoading]    = useState(true);
@@ -248,19 +252,133 @@ export default function LeapmotorPage() {
   }, [mergedSessions, overrides, gwSessions]);
 
   const visibleSessions = mergedSessions.filter((s) => !overrides[s.id]?._deleted);
-  const gwTotalPages   = Math.ceil(gwSessions.length / PAGE_SIZE);
-  const gwPagedSessions = gwSessions.slice((gwPage - 1) * PAGE_SIZE, gwPage * PAGE_SIZE);
-  const totalPages     = Math.ceil(visibleSessions.length / PAGE_SIZE);
-  const pagedSessions  = visibleSessions.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+  // Filtruj wg widoku
+  const isThisMonth = (dateStr) => {
+    if (!dateStr || dateStr === "—") return false;
+    const now = new Date();
+    const [, m, y] = dateStr.split(".");
+    return m === String(now.getMonth()+1).padStart(2,"0") && y === String(now.getFullYear());
+  };
+  const lpSessions     = lpView === "month" ? visibleSessions.filter(s => isThisMonth(s.date)) : visibleSessions;
+  const gwFilteredSessions = gwView === "month" ? gwSessions.filter(s => isThisMonth(s.date)) : gwSessions;
+
+  const totalPages      = Math.ceil(lpSessions.length / PAGE_SIZE);
+  const pagedSessions   = lpSessions.slice((page-1)*PAGE_SIZE, page*PAGE_SIZE);
+  const gwTotalPages    = Math.ceil(gwFilteredSessions.length / PAGE_SIZE);
+  const gwPagedSessions = gwFilteredSessions.slice((gwPage-1)*PAGE_SIZE, gwPage*PAGE_SIZE);
+
+  function handleStatClick(type, view) {
+    if (type === "lp") {
+      if (lpView === view) { setLpView(null); }
+      else { setLpView(view); setPage(1); }
+    } else {
+      if (gwView === view) { setGwView(null); }
+      else { setGwView(view); setGwPage(1); }
+    }
+  }
+
+  // Tabela Leapmotor
+  function LpTable() {
+    return (
+      <>
+        <div className="messages-table-wrap" style={{marginTop:"8px"}}>
+          <table className="messages-table lp-table">
+            <thead>
+              <tr>
+                <th>Data</th><th>Czas</th><th>Start</th><th>Koniec</th><th>+%</th><th>Koszt</th><th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {pagedSessions.map((s) => {
+                const cost = calcCost(s);
+                const diff = s.level_start != null && s.level_end != null ? s.level_end - s.level_start : null;
+                return (
+                  <tr key={s.id} className={(!s.level_end || !s.level_start) ? "lp-row--incomplete" : ""}>
+                    <td className="lp-date">{s.date}</td>
+                    <td className="lp-time">{s.time_start||"—"}{s.time_end&&<>→{s.time_end}</>}</td>
+                    <td className="lp-level">{s.level_start!=null?<span className="lp-badge lp-badge--start">{s.level_start}%</span>:"—"}</td>
+                    <td className="lp-level">{s.level_end!=null?<span className="lp-badge lp-badge--end">{s.level_end}%</span>:<span className="lp-missing">brak</span>}</td>
+                    <td className="lp-diff">{diff!=null?<span className="lp-diff-val">+{diff}%</span>:"—"}</td>
+                    <td className="lp-cost">{cost!=null?<strong>{cost.toFixed(2).replace(".",",")} zł</strong>:<span className="lp-missing">—</span>}</td>
+                    <td style={{whiteSpace:"nowrap"}}>
+                      <button className="btn-view-schedule" onClick={()=>setEditSession(s)}>✏️</button>
+                      <button className="btn-delete" onClick={()=>handleDelete(s.id)}>🗑</button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+        {totalPages > 1 && (
+          <div className="pagination" style={{marginTop:"8px"}}>
+            <span className="pagination-info">{(page-1)*PAGE_SIZE+1}–{Math.min(page*PAGE_SIZE, lpSessions.length)} z {lpSessions.length}</span>
+            <div className="pagination-controls">
+              <button className="page-btn" onClick={()=>setPage(1)} disabled={page===1}>«</button>
+              <button className="page-btn" onClick={()=>setPage(p=>p-1)} disabled={page===1}>‹</button>
+              {Array.from({length:totalPages},(_,i)=>i+1).map(p=>(
+                <button key={p} className={`page-btn ${p===page?"page-btn--active":""}`} onClick={()=>setPage(p)}>{p}</button>
+              ))}
+              <button className="page-btn" onClick={()=>setPage(p=>p+1)} disabled={page===totalPages}>›</button>
+              <button className="page-btn" onClick={()=>setPage(totalPages)} disabled={page===totalPages}>»</button>
+            </div>
+          </div>
+        )}
+      </>
+    );
+  }
+
+  // Tabela GreenWay
+  function GwTable() {
+    return (
+      <>
+        <div className="messages-table-wrap" style={{marginTop:"8px"}}>
+          <table className="messages-table lp-table lp-table-gw">
+            <thead>
+              <tr><th>Data</th><th>Stacja</th><th>Złącze</th><th>Czas</th><th>Energia</th><th>Koszt</th></tr>
+            </thead>
+            <tbody>
+              {gwPagedSessions.map((s) => {
+                const koszt = s.koszt!=null
+                  ? s.koszt.toFixed(2).replace(".",",")+` zł`
+                  : s.energia_kwh ? (s.energia_kwh*1.5).toFixed(2).replace(".",",")+` zł` : null;
+                return (
+                  <tr key={s.id}>
+                    <td className="lp-date">{s.date}</td>
+                    <td style={{fontSize:"0.82rem"}}>{s.stacja}</td>
+                    <td style={{fontSize:"0.78rem",color:"var(--clr-text-muted)"}}>{s.zlacze}</td>
+                    <td className="lp-time">{s.czas}</td>
+                    <td><span className="lp-badge lp-badge--end">{s.energia_str}</span></td>
+                    <td className="lp-cost">{koszt?<strong>{koszt}</strong>:"—"}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+        {gwTotalPages > 1 && (
+          <div className="pagination" style={{marginTop:"8px"}}>
+            <span className="pagination-info">{(gwPage-1)*PAGE_SIZE+1}–{Math.min(gwPage*PAGE_SIZE, gwFilteredSessions.length)} z {gwFilteredSessions.length}</span>
+            <div className="pagination-controls">
+              <button className="page-btn" onClick={()=>setGwPage(1)} disabled={gwPage===1}>«</button>
+              <button className="page-btn" onClick={()=>setGwPage(p=>p-1)} disabled={gwPage===1}>‹</button>
+              {Array.from({length:gwTotalPages},(_,i)=>i+1).map(p=>(
+                <button key={p} className={`page-btn ${p===gwPage?"page-btn--active":""}`} onClick={()=>setGwPage(p)}>{p}</button>
+              ))}
+              <button className="page-btn" onClick={()=>setGwPage(p=>p+1)} disabled={gwPage===gwTotalPages}>›</button>
+              <button className="page-btn" onClick={()=>setGwPage(gwTotalPages)} disabled={gwPage===gwTotalPages}>»</button>
+            </div>
+          </div>
+        )}
+      </>
+    );
+  }
 
   return (
     <>
       {editSession && (
-        <EditSessionModal
-          session={editSession}
-          onClose={() => setEditSession(null)}
-          onSave={handleSaveEdit}
-        />
+        <EditSessionModal session={editSession} onClose={()=>setEditSession(null)} onSave={handleSaveEdit} />
       )}
 
       <section className="subpage-hero subpage-hero--leapmotor">
@@ -271,219 +389,75 @@ export default function LeapmotorPage() {
 
       {/* ── Statystyki — Leapmotor ── */}
       <div className="lp-stats-section">
-        <div className="lp-stats-title">⚡ Leapmotor C10</div>
+        <div className="lp-stats-header">
+          <div className="lp-stats-title">⚡ Leapmotor C10</div>
+          <div style={{display:"flex",gap:"6px"}}>
+            <button className="btn-add" onClick={handleAddSession} style={{fontSize:"0.78rem",padding:"4px 10px"}}>+ Dodaj</button>
+            <button className="btn-refresh" onClick={handleRefresh} disabled={refreshing} style={{fontSize:"0.78rem",padding:"4px 10px"}}>
+              {refreshing?"⏳":"🔄"}
+            </button>
+          </div>
+        </div>
         <div className="lp-stats">
           <div className="lp-stat-card">
             <div className="lp-stat-value">{stats.totalSessions}</div>
             <div className="lp-stat-label">Sesji łącznie</div>
           </div>
-          <div className="lp-stat-card lp-stat-card--accent">
-            <div className="lp-stat-value">{stats.totalCost.toFixed(2).replace(".", ",")} zł</div>
-            <div className="lp-stat-label">Koszt łączny</div>
+          <div className={`lp-stat-card lp-stat-card--accent lp-stat-card--clickable ${lpView==="all"?"lp-stat-card--active":""}`}
+            onClick={()=>handleStatClick("lp","all")}>
+            <div className="lp-stat-value">{stats.totalCost.toFixed(2).replace(".",",")} zł</div>
+            <div className="lp-stat-label">Koszt łączny {lpView==="all"?"▲":"▼"}</div>
           </div>
           <div className="lp-stat-card lp-stat-card--month">
             <div className="lp-stat-value">{stats.monthCount}</div>
-            <div className="lp-stat-label">Ten miesiąc (sesji)</div>
+            <div className="lp-stat-label">Ten miesiąc</div>
           </div>
-          <div className="lp-stat-card lp-stat-card--month">
-            <div className="lp-stat-value">{stats.monthCost.toFixed(2).replace(".", ",")} zł</div>
-            <div className="lp-stat-label">Ten miesiąc (koszt)</div>
+          <div className={`lp-stat-card lp-stat-card--month lp-stat-card--clickable ${lpView==="month"?"lp-stat-card--active":""}`}
+            onClick={()=>handleStatClick("lp","month")}>
+            <div className="lp-stat-value">{stats.monthCost.toFixed(2).replace(".",",")} zł</div>
+            <div className="lp-stat-label">Koszt miesiąc {lpView==="month"?"▲":"▼"}</div>
           </div>
         </div>
+        {error && <div className="vulcan-error-banner" style={{marginTop:"8px"}}>⚠️ {error}</div>}
+        {loading && <div className="vulcan-loading"><span className="vulcan-spinner">⏳</span> Ładowanie…</div>}
+        {!loading && lpView && <LpTable />}
       </div>
 
       {/* ── Statystyki — GreenWay ── */}
       <div className="lp-stats-section">
-        <div className="lp-stats-title">🟢 GreenWay</div>
+        <div className="lp-stats-header">
+          <div className="lp-stats-title">🟢 GreenWay</div>
+          <button className="btn-refresh" onClick={handleRefreshGw} disabled={gwRefreshing} style={{fontSize:"0.78rem",padding:"4px 10px"}}>
+            {gwRefreshing?"⏳ Sprawdzam...":"🔄 Odśwież"}
+          </button>
+        </div>
         <div className="lp-stats">
           <div className="lp-stat-card">
             <div className="lp-stat-value">{gwSessions.length}</div>
             <div className="lp-stat-label">Sesji łącznie</div>
           </div>
-          <div className="lp-stat-card lp-stat-card--accent lp-stat-card--gw">
-            <div className="lp-stat-value">{stats.gwTotalCost.toFixed(2).replace(".", ",")} zł</div>
-            <div className="lp-stat-label">Koszt łączny</div>
+          <div className={`lp-stat-card lp-stat-card--accent lp-stat-card--gw lp-stat-card--clickable ${gwView==="all"?"lp-stat-card--active":""}`}
+            onClick={()=>handleStatClick("gw","all")}>
+            <div className="lp-stat-value">{stats.gwTotalCost.toFixed(2).replace(".",",")} zł</div>
+            <div className="lp-stat-label">Koszt łączny {gwView==="all"?"▲":"▼"}</div>
           </div>
           <div className="lp-stat-card lp-stat-card--month">
             <div className="lp-stat-value">{stats.gwMonthCount}</div>
-            <div className="lp-stat-label">Ten miesiąc (sesji)</div>
+            <div className="lp-stat-label">Ten miesiąc</div>
           </div>
-          <div className="lp-stat-card lp-stat-card--month">
-            <div className="lp-stat-value">{stats.gwMonthCost.toFixed(2).replace(".", ",")} zł</div>
-            <div className="lp-stat-label">Ten miesiąc (koszt)</div>
+          <div className={`lp-stat-card lp-stat-card--month lp-stat-card--clickable ${gwView==="month"?"lp-stat-card--active":""}`}
+            onClick={()=>handleStatClick("gw","month")}>
+            <div className="lp-stat-value">{stats.gwMonthCost.toFixed(2).replace(".",",")} zł</div>
+            <div className="lp-stat-label">Koszt miesiąc {gwView==="month"?"▲":"▼"}</div>
           </div>
         </div>
+        {gwError && <div className="vulcan-error-banner" style={{marginTop:"8px"}}>⚠️ {gwError}</div>}
+        {gwLoading && <div className="vulcan-loading"><span className="vulcan-spinner">⏳</span> Ładowanie GreenWay…</div>}
+        {!gwLoading && gwView && gwSessions.length === 0 && (
+          <div className="messages-empty"><span>🟢</span><p>Brak sesji GreenWay.</p></div>
+        )}
+        {!gwLoading && gwView && gwSessions.length > 0 && <GwTable />}
       </div>
-
-      {/* ── Nagłówek ── */}
-      <div className="messages-header" style={{ marginTop: "20px" }}>
-        <h2 className="dash-section-title">📋 Sesje ładowania</h2>
-        <div className="header-actions">
-          <button className="btn-add" onClick={handleAddSession}>+ Dodaj</button>
-          <button className="btn-refresh" onClick={handleRefresh} disabled={refreshing}>
-            {refreshing ? "⏳ Sprawdzam..." : "🔄 Odśwież"}
-          </button>
-        </div>
-      </div>
-
-      {error   && <div className="vulcan-error-banner">⚠️ {error}</div>}
-      {loading && <div className="vulcan-loading"><span className="vulcan-spinner">⏳</span> Ładowanie…</div>}
-
-      {!loading && visibleSessions.length === 0 ? (
-        <div className="messages-empty">
-          <span>⚡</span><p>Brak sesji ładowania.</p>
-          <p className="messages-empty-hint">Kliknij „Odśwież" aby pobrać dane z maili Leapmotor.</p>
-        </div>
-      ) : !loading && (
-        <div className="messages-table-wrap">
-          <table className="messages-table lp-table">
-            <thead>
-              <tr>
-                <th>Data</th>
-                <th>Czas</th>
-                <th>Poziom start</th>
-                <th>Poziom koniec</th>
-                <th>Zużycie</th>
-                <th>Koszt</th>
-                <th>Akcja</th>
-              </tr>
-            </thead>
-            <tbody>
-              {pagedSessions.map((s) => {
-                const cost = calcCost(s);
-                const diff = s.level_start != null && s.level_end != null
-                  ? s.level_end - s.level_start : null;
-                const incomplete = s.level_end == null || s.level_start == null;
-                return (
-                  <tr key={s.id} className={incomplete ? "lp-row--incomplete" : ""}>
-                    <td className="lp-date">{s.date}</td>
-                    <td className="lp-time">
-                      {s.time_start || "—"}
-                      {s.time_end && <> → {s.time_end}</>}
-                    </td>
-                    <td className="lp-level">
-                      {s.level_start != null
-                        ? <span className="lp-badge lp-badge--start">{s.level_start}%</span>
-                        : <span className="lp-missing">—</span>}
-                    </td>
-                    <td className="lp-level">
-                      {s.level_end != null
-                        ? <span className="lp-badge lp-badge--end">{s.level_end}%</span>
-                        : <span className="lp-missing">brak danych</span>}
-                    </td>
-                    <td className="lp-diff">
-                      {diff != null
-                        ? <span className="lp-diff-val">+{diff}%</span>
-                        : "—"}
-                    </td>
-                    <td className="lp-cost">
-                      {cost != null
-                        ? <strong>{typeof cost === "number" ? cost.toFixed(2).replace(".", ",") : cost} zł</strong>
-                        : <span className="lp-missing">—</span>}
-                    </td>
-                    <td style={{whiteSpace:"nowrap"}}>
-                      <button className="btn-view-schedule"
-                        onClick={() => setEditSession(s)} title="Edytuj">✏️</button>
-                      <button className="btn-delete"
-                        onClick={() => handleDelete(s.id)} title="Usuń">🗑</button>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {/* Stronicowanie */}
-      {!loading && totalPages > 1 && (
-        <div className="pagination" style={{marginTop:"12px"}}>
-          <span className="pagination-info">
-            {(page-1)*PAGE_SIZE+1}–{Math.min(page*PAGE_SIZE, visibleSessions.length)} z {visibleSessions.length}
-          </span>
-          <div className="pagination-controls">
-            <button className="page-btn" onClick={() => setPage(1)} disabled={page===1}>«</button>
-            <button className="page-btn" onClick={() => setPage(p=>p-1)} disabled={page===1}>‹</button>
-            {Array.from({length: totalPages}, (_,i) => i+1).map(p => (
-              <button key={p} className={`page-btn ${p===page?"page-btn--active":""}`}
-                onClick={() => setPage(p)}>{p}</button>
-            ))}
-            <button className="page-btn" onClick={() => setPage(p=>p+1)} disabled={page===totalPages}>›</button>
-            <button className="page-btn" onClick={() => setPage(totalPages)} disabled={page===totalPages}>»</button>
-          </div>
-        </div>
-      )}
-      {/* ── GreenWay ── */}
-      <div className="messages-header" style={{marginTop:"32px"}}>
-        <h2 className="dash-section-title">🟢 GreenWay — ładowania na stacjach</h2>
-        <div className="header-actions">
-          <button className="btn-refresh" onClick={handleRefreshGw} disabled={gwRefreshing}>
-            {gwRefreshing ? "⏳ Sprawdzam..." : "🔄 Odśwież"}
-          </button>
-        </div>
-      </div>
-
-
-
-      {gwError   && <div className="vulcan-error-banner">⚠️ {gwError}</div>}
-      {gwLoading && <div className="vulcan-loading"><span className="vulcan-spinner">⏳</span> Ładowanie GreenWay…</div>}
-
-      {!gwLoading && gwSessions.length === 0 ? (
-        <div className="messages-empty">
-          <span>🟢</span><p>Brak sesji GreenWay.</p>
-          <p className="messages-empty-hint">Kliknij „Odśwież" aby pobrać dane z Gmaila.</p>
-        </div>
-      ) : !gwLoading && (
-        <div className="messages-table-wrap">
-          <table className="messages-table lp-table lp-table-gw">
-            <thead>
-              <tr>
-                <th>Data</th>
-                <th>Stacja</th>
-                <th>Złącze</th>
-                <th>Czas</th>
-                <th>Energia</th>
-                <th>Koszt</th>
-              </tr>
-            </thead>
-            <tbody>
-              {gwPagedSessions.map((s) => {
-                const koszt = s.koszt != null
-                  ? s.koszt.toFixed(2).replace(".", ",") + " zł"
-                  : s.energia_kwh ? (s.energia_kwh * 1.5).toFixed(2).replace(".", ",") + " zł" : null;
-                return (
-                  <tr key={s.id}>
-                    <td className="lp-date">{s.date}</td>
-                    <td style={{fontSize:"0.82rem"}}>{s.stacja}</td>
-                    <td style={{fontSize:"0.78rem",color:"var(--clr-text-muted)"}}>{s.zlacze}</td>
-                    <td className="lp-time">{s.czas}</td>
-                    <td><span className="lp-badge lp-badge--end">{s.energia_str}</span></td>
-                    <td className="lp-cost">{koszt ? <strong>{koszt}</strong> : "—"}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {!gwLoading && gwTotalPages > 1 && (
-        <div className="pagination" style={{marginTop:"12px"}}>
-          <span className="pagination-info">
-            {(gwPage-1)*PAGE_SIZE+1}–{Math.min(gwPage*PAGE_SIZE, gwSessions.length)} z {gwSessions.length}
-          </span>
-          <div className="pagination-controls">
-            <button className="page-btn" onClick={() => setGwPage(1)} disabled={gwPage===1}>«</button>
-            <button className="page-btn" onClick={() => setGwPage(p=>p-1)} disabled={gwPage===1}>‹</button>
-            {Array.from({length: gwTotalPages}, (_,i) => i+1).map(p => (
-              <button key={p} className={`page-btn ${p===gwPage?"page-btn--active":""}`}
-                onClick={() => setGwPage(p)}>{p}</button>
-            ))}
-            <button className="page-btn" onClick={() => setGwPage(p=>p+1)} disabled={gwPage===gwTotalPages}>›</button>
-            <button className="page-btn" onClick={() => setGwPage(gwTotalPages)} disabled={gwPage===gwTotalPages}>»</button>
-          </div>
-        </div>
-      )}
     </>
   );
 }

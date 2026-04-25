@@ -210,3 +210,24 @@
   .lp-table-gw td:nth-child(3),
   .lp-table-gw td:nth-child(4) { display: none; }
 }
+
+/* ── Klikalne karty statystyk ────────────────────────────────── */
+.lp-stat-card--clickable {
+  cursor: pointer;
+  transition: transform 0.1s, box-shadow 0.1s;
+}
+.lp-stat-card--clickable:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+.lp-stat-card--active {
+  outline: 2px solid var(--clr-primary);
+  outline-offset: 2px;
+}
+
+.lp-stats-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
