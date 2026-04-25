@@ -4,7 +4,7 @@ nixPkgs = ["nodejs_20", "python312", "python312Packages.pip", "python312Packages
 [phases.install]
 cmds = [
   "npm install",
-  "pip3 install imapclient --break-system-packages"
+  "pip3 install imapclient beautifulsoup4 --break-system-packages"
 ]
 
 [start]
