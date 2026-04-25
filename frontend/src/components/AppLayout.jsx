@@ -23,7 +23,7 @@ export default function AppLayout({ children }) {
       <header className="app-header">
         <button className="app-logo app-logo--btn" onClick={() => window.location.reload()} title="Odśwież">
           <span className="app-logo-main">🦷 Tooth Zone</span>
-          <span className="app-logo-sub">Kliknij aby odświeżyć</span>
+
         </button>
         <div className="app-header-right">
           <span className="app-user-email">{userEmail}</span>

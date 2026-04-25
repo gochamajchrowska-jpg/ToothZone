@@ -875,18 +875,19 @@
   .btn-logout { padding: 6px 12px; font-size: 0.75rem; }
 
   .app-nav {
-    position: fixed;
-    bottom: 0; left: 0; right: 0; top: auto;
-    z-index: 200;
-    border-top: 1px solid var(--clr-border);
-    border-bottom: none;
+    position: static;
+    border-bottom: 1px solid var(--clr-border);
+    border-top: none;
     padding: 0;
-    padding-bottom: env(safe-area-inset-bottom);
     background: var(--clr-surface);
     display: flex;
     justify-content: space-around;
-    box-shadow: 0 -1px 0 var(--clr-border), var(--shadow-lg);
+    box-shadow: var(--shadow-xs);
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
   }
+  .app-nav::-webkit-scrollbar { display: none; }
 
   .app-nav-link {
     flex: 1;
@@ -894,17 +895,18 @@
     align-items: center;
     justify-content: center;
     gap: 2px;
-    padding: 8px 4px;
+    padding: 10px 4px;
     font-size: 0.62rem;
-    border-bottom: none;
-    border-top: 2px solid transparent;
-    min-height: 56px;
+    border-bottom: 2px solid transparent;
+    border-top: none;
+    min-height: 52px;
     border-radius: 0;
+    flex-shrink: 0;
   }
   .app-nav-link:hover { background: var(--clr-primary-light); border-radius: 0; }
-  .app-nav-link.active { border-top-color: var(--clr-primary); background: var(--clr-primary-light); }
+  .app-nav-link.active { border-bottom-color: var(--clr-primary); background: var(--clr-primary-light); }
 
-  .app-main { padding: 16px 16px calc(80px + env(safe-area-inset-bottom)); gap: var(--space-4); }
+  .app-main { padding: 16px 16px 32px; gap: var(--space-4); }
 
   /* Nav cards — 2 col grid */
   .dash-nav-cards {
