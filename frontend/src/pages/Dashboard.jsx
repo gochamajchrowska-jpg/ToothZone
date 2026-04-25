@@ -9,7 +9,9 @@ import ObligationsPage from "./ObligationsPage";
 import LeapmotorPage from "./LeapmotorPage";
 import { useAuth } from "../App";
 import { useServerSync } from "../hooks/useServerSync";
-import { parseDate, formatDate, toIsoDate, todayIso } from "../utils/dates";
+import { parseDate, formatDate, toIsoDate, todayIso, isOverdue } from "../utils/dates";
+import { parseAmount } from "../utils/payments";
+import { STORAGE_KEYS, loadSet } from "../utils/storage";
 
 const CATEGORY_LABELS = { school: "Szkoła", preschool: "Przedszkole", other: "Inne" };
 const CATEGORY_ICONS  = { school: "🎒", preschool: "🧸", other: "📌" };
@@ -114,6 +116,42 @@ export default function Dashboard() {
   const upcoming = allEvents.filter((e) => parseDate(e.date) >= new Date(new Date().setHours(0,0,0,0)));
   const past     = allEvents.filter((e) => parseDate(e.date) <  new Date(new Date().setHours(0,0,0,0)));
 
+  // Podsumowanie zobowiązań dla karty
+  const oblSummary = useMemo(() => {
+    const schoolPaid    = loadSet(STORAGE_KEYS.schoolPaid);
+    const preschoolPaid = loadSet(STORAGE_KEYS.preschoolPaid);
+    const oblPaid       = loadSet(STORAGE_KEYS.oblPaid);
+
+    // Płatności z localStorage (szkoła + przedszkole) — ostatnie 3 mies
+    const now = new Date();
+    const cutoff = new Date(now.getFullYear(), now.getMonth() - 3, 1);
+
+    const allUnpaid = [];
+
+    // Ręczne zobowiązania z serwera
+    const oblManual = (syncData?.oblManual || []).filter(m => !m.cyclic);
+    oblManual.forEach(m => {
+      if (!oblPaid.has(m.id)) allUnpaid.push({ kwota: m.kwota, termin: m.termin, overdue: isOverdue(m.termin) });
+    });
+
+    // Szkolne ręczne
+    (syncData?.schoolManual || []).forEach(p => {
+      if (!schoolPaid.has(p.id) && !oblPaid.has(p.id)) allUnpaid.push({ kwota: p.kwota, termin: p.termin, overdue: isOverdue(p.termin) });
+    });
+
+    // Przedszkolne ręczne
+    (syncData?.preschoolManual || []).forEach(p => {
+      if (!preschoolPaid.has(p.id) && !oblPaid.has(p.id)) allUnpaid.push({ kwota: p.kwota, termin: p.termin, overdue: isOverdue(p.termin) });
+    });
+
+    const total    = allUnpaid.reduce((s, p) => s + parseAmount(p.kwota), 0);
+    const overdue  = allUnpaid.filter(p => p.overdue).reduce((s, p) => s + parseAmount(p.kwota), 0);
+    const count    = allUnpaid.length;
+    const overdueCount = allUnpaid.filter(p => p.overdue).length;
+
+    return { total, overdue, count, overdueCount };
+  }, [syncData]);
+
   function handleSaveEvent(event) {
     const next = dashEvents.findIndex((e) => e.id === event.id) >= 0
       ? dashEvents.map((e) => e.id === event.id ? event : e)
@@ -148,8 +186,24 @@ export default function Dashboard() {
             >
               <span className="dash-nav-card-icon">{card.icon}</span>
               <span className="dash-nav-card-label">{card.label}</span>
+
+              {/* Badge: liczba nadchodzących wydarzeń */}
               {card.id === "events" && upcoming.length > 0 && (
                 <span className="dash-nav-card-badge">{upcoming.length}</span>
+              )}
+
+              {/* Podsumowanie zobowiązań */}
+              {card.id === "obligations" && oblSummary.count > 0 && (
+                <div className="dash-nav-card-obl">
+                  {oblSummary.overdueCount > 0 && (
+                    <span className="dash-nav-card-obl-item dash-nav-card-obl--overdue">
+                      ⚠️ {oblSummary.overdueCount} po terminie · {oblSummary.overdue.toFixed(2).replace(".", ",")} zł
+                    </span>
+                  )}
+                  <span className="dash-nav-card-obl-item">
+                    Łącznie: {oblSummary.total.toFixed(2).replace(".", ",")} zł
+                  </span>
+                </div>
               )}
             </button>
           ))}

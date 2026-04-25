@@ -990,3 +990,29 @@
   .header-actions { width: 100%; }
   .btn-refresh { justify-content: center; }
 }
+
+/* ── Podsumowanie zobowiązań na karcie ── */
+.dash-nav-card-obl {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  width: 100%;
+  position: relative;
+  z-index: 1;
+  margin-top: var(--space-1);
+}
+.dash-nav-card-obl-item {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--clr-text-muted);
+  background: rgba(255,255,255,0.85);
+  border-radius: var(--radius-sm);
+  padding: 2px 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dash-nav-card-obl--overdue {
+  color: #991b1b;
+  background: rgba(254,226,226,0.9);
+}
