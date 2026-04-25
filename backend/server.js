@@ -288,6 +288,16 @@ app.patch("/api/userdata", authenticateToken, async (req, res) => {
   res.json({ ok: true });
 });
 
+// ── Wyczyść cache GreenWay (usuń puste wpisy) ───────────────
+app.post("/api/admin/clean-greenway", authenticateToken, async (req, res) => {
+  const before = greenwayCache.length;
+  greenwayCache = greenwayCache.filter(s =>
+    s.energia_kwh != null && s.stacja && s.stacja !== "—"
+  );
+  await saveCache("greenway", greenwayCache);
+  res.json({ ok: true, before, after: greenwayCache.length, removed: before - greenwayCache.length });
+});
+
 // ── Pełne pobranie historyczne (jednorazowe) ─────────────────
 app.post("/api/admin/full-refresh", authenticateToken, async (req, res) => {
   res.json({ ok: true, message: "Pełne pobranie uruchomione w tle. Sprawdź logi." });

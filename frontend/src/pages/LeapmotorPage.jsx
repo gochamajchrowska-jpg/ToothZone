@@ -204,7 +204,11 @@ export default function LeapmotorPage() {
     const totalSessions = visible.length;
     const completedSessions = visible.filter((s) => s.level_end != null).length;
     const gwTotalKwh  = gwSessions.reduce((sum, s) => sum + (s.energia_kwh || 0), 0);
-    const gwTotalCost = gwSessions.reduce((sum, s) => sum + (s.energia_kwh ? s.energia_kwh * 1.5 : 0), 0);
+    const gwTotalCost = gwSessions.reduce((sum, s) => {
+      if (s.koszt != null) return sum + s.koszt;
+      if (s.energia_kwh) return sum + s.energia_kwh * 1.5;
+      return sum;
+    }, 0);
     return { totalCost, totalSessions, completedSessions, gwTotalKwh, gwTotalCost };
   }, [mergedSessions, overrides, gwSessions]);
 
@@ -388,7 +392,7 @@ export default function LeapmotorPage() {
                 <th>Złącze</th>
                 <th>Czas</th>
                 <th>Energia</th>
-                <th>Koszt est.</th>
+                <th>Koszt</th>
               </tr>
             </thead>
             <tbody>
