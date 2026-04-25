@@ -1,430 +1,135 @@
 /* ============================================================
-   obligations.css — Style dla zakładki Zobowiązania
-============================================================ */
+   obligations.css — Zobowiązania
+   ============================================================ */
 
-/* ── Nagłówek ────────────────────────────────────────────── */
 .obl-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   flex-wrap: wrap;
-  gap: 12px;
-  margin-bottom: 20px;
+  gap: var(--space-3);
+  margin-bottom: var(--space-5);
 }
-
-.obl-header-left {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  flex-wrap: wrap;
-}
-
-.obl-title {
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: var(--clr-text);
-  margin: 0;
-}
-
+.obl-header-left { display: flex; align-items: center; gap: var(--space-4); flex-wrap: wrap; }
+.obl-title { font-size: 1.1rem; font-weight: 600; color: var(--clr-text); margin: 0; }
 .obl-total {
-  font-size: 0.85rem;
+  font-size: 0.82rem;
   font-weight: 700;
-  color: var(--clr-error-text);
-  background: var(--clr-error-bg);
-  border: 1px solid var(--clr-error-border);
-  border-radius: 100px;
+  color: #991b1b;
+  background: var(--clr-error-light);
+  border: 1px solid #fca5a5;
+  border-radius: var(--radius-full);
   padding: 3px 12px;
 }
-
-.obl-header-actions {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
+.obl-header-actions { display: flex; gap: var(--space-2); flex-wrap: wrap; }
 
 .btn-schedule {
-  padding: 0.45rem 1rem;
-  background: var(--clr-surface-2);
-  color: var(--clr-text);
-  border: 1.5px solid var(--clr-border);
-  border-radius: var(--radius-sm);
-  font-size: 0.85rem;
+  padding: var(--space-2) var(--space-4);
+  background: var(--clr-surface);
+  color: var(--clr-text-2);
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius-full);
+  font-size: 0.82rem;
   font-weight: 600;
   font-family: var(--font-body);
   cursor: pointer;
   transition: all 0.15s;
   white-space: nowrap;
 }
-.btn-schedule:hover {
-  background: var(--clr-primary-light);
-  border-color: var(--clr-primary);
-  color: var(--clr-primary-dark);
-}
+.btn-schedule:hover { background: var(--clr-primary-light); border-color: var(--clr-primary-mid); color: var(--clr-primary); }
 
-/* ── Tabela ────────────────────────────────────────────────── */
-.obl-table th:first-child  { min-width: 180px; }
-.obl-table th:last-child   { min-width: 100px; }
+.obl-table th:first-child { min-width: 180px; }
+.obl-name { font-weight: 600; color: var(--clr-text); margin-bottom: 2px; font-size: 0.9rem; }
+.obl-actions { display: flex; gap: var(--space-2); align-items: center; white-space: nowrap; }
 
-.obl-name {
-  font-weight: 600;
-  color: var(--clr-text);
-  margin-bottom: 3px;
-}
-
-.obl-actions {
-  display: flex;
-  gap: 6px;
-  align-items: center;
-  white-space: nowrap;
-}
-
-/* ── Źródło badge ────────────────────────────────────────── */
 .obl-badge {
   display: inline-block;
-  font-size: 0.68rem;
+  font-size: 0.65rem;
   font-weight: 600;
-  border-radius: 100px;
+  border-radius: var(--radius-full);
   padding: 1px 7px;
-  margin-top: 4px;
+  margin-top: 3px;
   border: 1px solid transparent;
 }
+.obl-badge--school    { background: var(--clr-school-light); color: var(--clr-school); border-color: var(--clr-primary-mid); }
+.obl-badge--preschool { background: var(--clr-preschool-light); color: #92400e; border-color: #fde68a; }
+.obl-badge--cyclic    { background: #d1fae5; color: #065f46; border-color: #6ee7b7; }
+.obl-badge--schedule  { background: #f3e8ff; color: #7e22ce; border-color: #d8b4fe; }
+.obl-badge--manual    { background: var(--clr-surface-2); color: var(--clr-text-muted); border-color: var(--clr-border); }
 
-.obl-badge--school {
-  background: #e8f0fe;
-  color: #1a56db;
-  border-color: #c3d5fd;
-}
-.obl-badge--preschool {
-  background: var(--clr-preschool-bg, #fff3e0);
-  color: #a06010;
-  border-color: #f0c87a;
-}
-.obl-badge--cyclic {
-  background: #e8f5e9;
-  color: #2e7d32;
-  border-color: #a5d6a7;
-}
-.obl-badge--schedule {
-  background: #f3e5f5;
-  color: #6a1b9a;
-  border-color: #ce93d8;
-}
-.obl-badge--manual {
-  background: var(--clr-surface-2);
-  color: var(--clr-text-muted);
-  border-color: var(--clr-border);
-}
-
-/* ── Harmonogramy ────────────────────────────────────────── */
-.obl-schedules {
-  margin-top: 32px;
-}
-
-.obl-schedules-title {
-  font-size: 0.95rem;
-  font-weight: 600;
-  color: var(--clr-text);
-  margin-bottom: 12px;
-}
-
-.obl-schedules-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
+.obl-schedules { margin-top: var(--space-8); }
+.obl-schedules-title { font-size: 0.95rem; font-weight: 600; color: var(--clr-text); margin-bottom: var(--space-4); }
+.obl-schedules-list { display: flex; flex-direction: column; gap: var(--space-3); }
 
 .obl-schedule-card {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--space-4);
   background: var(--clr-surface);
-  border: 1.5px solid var(--clr-border);
+  border: 1px solid var(--clr-border);
   border-radius: var(--radius-md);
-  padding: 12px 16px;
+  padding: var(--space-3) var(--space-5);
   flex-wrap: wrap;
+  box-shadow: var(--shadow-xs);
 }
-
-.obl-schedule-info {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.obl-schedule-name {
-  font-weight: 600;
-  color: var(--clr-text);
-  font-size: 0.9rem;
-}
-
+.obl-schedule-info { display: flex; align-items: center; gap: var(--space-3); }
+.obl-schedule-name { font-weight: 600; color: var(--clr-text); font-size: 0.9rem; }
 .obl-schedule-count {
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   color: var(--clr-text-muted);
   background: var(--clr-surface-2);
-  border-radius: 100px;
+  border-radius: var(--radius-full);
   padding: 2px 8px;
-}
-
-.obl-schedule-btns {
-  display: flex;
-  gap: 6px;
-  align-items: center;
-}
-
-.btn-view-schedule {
-  padding: 4px 12px;
-  background: var(--clr-surface-2);
-  color: var(--clr-text);
   border: 1px solid var(--clr-border);
-  border-radius: var(--radius-sm);
-  font-size: 0.8rem;
-  font-weight: 600;
-  font-family: var(--font-body);
-  cursor: pointer;
-  transition: all 0.15s;
 }
-.btn-view-schedule:hover {
-  background: var(--clr-primary-light);
-  border-color: var(--clr-primary);
-  color: var(--clr-primary-dark);
-}
+.obl-schedule-btns { display: flex; gap: var(--space-2); align-items: center; }
 
-/* ── Modal harmonogram ───────────────────────────────────── */
-.modal-box--wide {
-  max-width: 680px;
-  width: 95%;
-}
-
-.schedule-hint {
-  font-size: 0.82rem;
-  color: var(--clr-text-muted);
-  margin: 0 0 14px;
-}
-
-.schedule-grid {
-  border: 1.5px solid var(--clr-border);
-  border-radius: var(--radius-md);
-  overflow: hidden;
-}
-
-.schedule-grid-header {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 8px;
-  padding: 8px 12px;
-  background: var(--clr-surface-2);
-  font-size: 0.78rem;
-  font-weight: 600;
-  color: var(--clr-text-muted);
-  border-bottom: 1px solid var(--clr-border);
-}
-
-.schedule-grid-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 8px;
-  padding: 6px 12px;
-  align-items: center;
-  border-bottom: 1px solid var(--clr-border);
-}
-.schedule-grid-row:last-child { border-bottom: none; }
-.schedule-grid-row:nth-child(even) { background: var(--clr-surface); }
-
-.schedule-grid-row input {
-  padding: 4px 8px;
-  font-size: 0.82rem;
-  border: 1px solid var(--clr-border);
-  border-radius: var(--radius-sm);
-  background: var(--clr-bg);
-  color: var(--clr-text);
-  font-family: var(--font-body);
-  width: 100%;
-  box-sizing: border-box;
-}
-.schedule-grid-row input:focus {
-  outline: none;
-  border-color: var(--clr-primary);
-}
-
-.schedule-month {
-  font-size: 0.82rem;
-  color: var(--clr-text);
-  font-weight: 500;
-}
-
-.schedule-grid-row--view span {
-  font-size: 0.82rem;
-  color: var(--clr-text);
-}
-
-/* ── Checkbox ────────────────────────────────────────────── */
-.modal-field--checkbox {
-  margin-top: 4px;
-}
-
+/* Checkbox */
+.modal-field--checkbox { margin-top: 0; }
 .checkbox-label {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--space-3);
   font-size: 0.88rem;
   color: var(--clr-text);
   cursor: pointer;
 }
+.checkbox-label input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--clr-primary); flex-shrink: 0; }
 
-.checkbox-label input[type="checkbox"] {
-  width: 16px;
-  height: 16px;
-  cursor: pointer;
-  accent-color: var(--clr-primary);
-}
-
-/* ── Mobile ────────────────────────────────────────────────── */
 @media (max-width: 640px) {
-  .obl-header {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 8px;
-  }
-  .obl-header-actions {
-    width: 100%;
-    display: flex;
-    gap: 8px;
-  }
-  .obl-header-actions button {
-    flex: 1;
-    justify-content: center;
-    min-height: 44px;
-    font-size: 0.85rem;
-  }
-  .btn-schedule {
-    font-size: 0.82rem;
-    min-height: 44px;
-  }
-  /* Upewnij się że przyciski są klikalnie nad tab barem */
-  .obl-actions {
-    position: relative;
-    z-index: 1;
-  }
+  .obl-header { flex-direction: column; align-items: stretch; }
+  .obl-header-actions { width: 100%; display: flex; gap: var(--space-2); }
+  .obl-header-actions button { flex: 1; justify-content: center; min-height: 44px; }
+  .btn-schedule { font-size: 0.8rem; }
 
-  /* ── Tabela zobowiązań → kompaktowe karty 2-wierszowe ── */
   .obl-table { display: block; }
   .obl-table thead { display: none; }
-  .obl-table tbody { display: flex; flex-direction: column; gap: 6px; }
-
-  /* Karta = wiersz tabeli */
+  .obl-table tbody { display: flex; flex-direction: column; gap: 8px; }
   .obl-table tr {
     display: grid;
     grid-template-columns: 1fr auto;
     grid-template-rows: auto auto;
     background: var(--clr-surface);
-    border: 1.5px solid var(--clr-border);
+    border: 1px solid var(--clr-border);
     border-radius: var(--radius-md);
-    padding: 10px 12px;
-    gap: 3px 8px;
+    padding: 12px 14px;
+    gap: 4px 8px;
+    box-shadow: var(--shadow-xs);
   }
-  .obl-table tr.row-overdue {
-    border-color: var(--clr-error-border);
-    background: var(--clr-error-bg);
-  }
-
-  /* Wszystkie td — reset */
-  .obl-table td {
-    display: block;
-    border: none;
-    padding: 0;
-  }
-
-  /* td 1: Nazwa — wiersz 1, kolumna 1 */
-  .obl-table td:nth-child(1) {
-    grid-column: 1;
-    grid-row: 1;
-  }
-  .obl-name {
-    font-size: 0.88rem;
-    font-weight: 600;
-    margin-bottom: 0;
-    line-height: 1.3;
-  }
-  .obl-badge { display: none; } /* ukryj badge — za mało miejsca */
-
-  /* td 2: Kwota — wiersz 1, kolumna 2 */
-  .obl-table td:nth-child(2) {
-    grid-column: 2;
-    grid-row: 1;
-    font-size: 0.95rem;
-    font-weight: 700;
-    color: var(--clr-primary-dark);
-    text-align: right;
-    white-space: nowrap;
-    align-self: center;
-  }
-
-  /* td 3: Termin — ukryty (pokazany inline w wierszu 2) */
+  .obl-table tr.row-overdue { border-color: #fca5a5; background: var(--clr-error-light); }
+  .obl-table td { border: none; padding: 0; }
+  .obl-table td:nth-child(1) { grid-column: 1; grid-row: 1; }
+  .obl-table td:nth-child(2) { grid-column: 2; grid-row: 1; font-weight: 700; font-size: 0.95rem; color: var(--clr-primary-dark); text-align: right; align-self: center; }
   .obl-table td:nth-child(3) { display: none; }
+  .obl-table td:nth-child(4) { grid-column: 1; grid-row: 2; display: flex !important; align-items: center; gap: 4px; }
+  .obl-table td:nth-child(4)::before { content: attr(data-termin); font-size: 0.72rem; color: var(--clr-text-muted); }
+  .obl-table .pay-badge { font-size: 0.65rem !important; padding: 1px 5px !important; }
+  .obl-table td:nth-child(5) { grid-column: 2; grid-row: 2; display: flex !important; justify-content: flex-end; align-items: center; gap: 4px; }
+  .obl-actions { flex-wrap: nowrap !important; gap: 4px !important; margin-top: 0 !important; }
 
-  /* td 4: Status badge — wiersz 2, kolumna 1 */
-  .obl-table td:nth-child(4) {
-    grid-column: 1;
-    grid-row: 2;
-    display: flex !important;
-    align-items: center;
-    gap: 4px;
-    font-size: 0.72rem;
-    color: var(--clr-text-muted);
-  }
-  /* Termin jako prefix w wierszu statusu */
-  .obl-table td:nth-child(4)::before {
-    content: attr(data-termin);
-    font-size: 0.72rem;
-    color: var(--clr-text-muted);
-    white-space: nowrap;
-    flex-shrink: 0;
-  }
-  .obl-table .pay-badge {
-    font-size: 0.65rem !important;
-    padding: 1px 5px !important;
-  }
+  .obl-schedule-card { flex-direction: column; align-items: flex-start; gap: var(--space-3); }
+  .obl-schedule-btns { width: 100%; }
 
-  /* td 5: Akcje — wiersz 2, kolumna 2 */
-  .obl-table td:nth-child(5) {
-    grid-column: 2;
-    grid-row: 2;
-    display: flex !important;
-    justify-content: flex-end;
-    align-items: center;
-    gap: 4px;
-  }
-  .obl-actions {
-    flex-wrap: nowrap !important;
-    gap: 4px !important;
-    margin-top: 0 !important;
-  }
-  .obl-actions .btn-mark-paid {
-    padding: 3px 10px !important;
-    font-size: 0.78rem !important;
-    min-height: 30px !important;
-  }
-  .obl-actions .btn-view-schedule,
-  .obl-actions .btn-delete {
-    padding: 3px 7px !important;
-    font-size: 0.78rem !important;
-    min-height: 30px !important;
-  }
-
-  /* Harmonogramy */
-  .obl-schedule-card {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 8px;
-  }
-  .obl-schedule-btns { width: 100%; justify-content: flex-start; }
-
-  /* Harmonogram modal — siatka na mobile */
-  .schedule-grid-header,
-  .schedule-grid-row {
-    grid-template-columns: 1.2fr 1fr 1fr;
-    gap: 4px;
-    font-size: 0.78rem;
-  }
-  .schedule-grid-row input { font-size: 14px; padding: 3px 6px; }
+  .schedule-grid-header, .schedule-grid-row { grid-template-columns: 1.2fr 1fr 1fr; gap: 4px; font-size: 0.75rem; }
 }

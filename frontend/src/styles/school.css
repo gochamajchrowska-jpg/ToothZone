@@ -1,1079 +1,171 @@
 /* ============================================================
-   school.css — Style tabeli wiadomości Vulcan w sekcji Szkoła
+   school.css — Szkoła i Przedszkole
    ============================================================ */
 
-/* ── Baner informacyjny (info, nie błąd) ───────────────────── */
-.info-banner {
-  background: var(--clr-primary-light);
-  color: var(--clr-primary-dark);
-  border: 1.5px solid #b3d9f0;
-  border-radius: var(--radius-md);
-  padding: var(--space-md) var(--space-lg);
-  font-size: 0.88rem;
-  font-weight: 500;
-}
+/* ── Hero ── */
+.subpage-hero { margin-bottom: var(--space-2); }
 
-/* ── Nagłówek sekcji z przyciskiem ─────────────────────────── */
-.messages-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: var(--space-md);
-}
+/* ── Tabele wiadomości ── */
+.msg-date  { color: var(--clr-text-muted); font-size: 0.8rem; white-space: nowrap; }
+.msg-user  { font-weight: 600; }
+.msg-topic { color: var(--clr-text-2); }
+.msg-link  { text-align: right; }
 
-/* Przycisk Odśwież */
-.btn-refresh {
-  padding: 0.45rem 1rem;
-  background: var(--clr-primary);
-  color: #fff;
-  border: none;
-  border-radius: var(--radius-sm);
-  font-size: 0.85rem;
-  font-weight: 600;
-  font-family: var(--font-body);
-  cursor: pointer;
-  transition: background 0.15s, transform 0.1s;
-  white-space: nowrap;
-}
-
-.btn-refresh:hover:not(:disabled) {
-  background: var(--clr-primary-dark);
-  transform: translateY(-1px);
-}
-
-.btn-refresh:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-/* ── Wrapper tabeli (poziome przewijanie na małych ekranach) ── */
-.messages-table-wrap {
-  overflow-x: auto;
-  border-radius: var(--radius-md);
-  border: 1.5px solid var(--clr-border);
-  background: var(--clr-surface);
-}
-
-/* ── Tabela ─────────────────────────────────────────────────── */
-.messages-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.88rem;
-}
-
-/* Nagłówki kolumn */
-.messages-table thead tr {
-  background: var(--clr-surface-2);
-  border-bottom: 2px solid var(--clr-border);
-}
-
-.messages-table th {
-  padding: 0.7rem 1rem;
+/* ── Płatności ── */
+.payments-table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+.payments-table th {
+  padding: var(--space-3) var(--space-4);
   text-align: left;
-  font-size: 0.75rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--clr-text-muted);
-  white-space: nowrap;
-}
-
-/* Wiersze danych */
-.messages-table tbody tr {
-  border-bottom: 1px solid var(--clr-border);
-  transition: background 0.12s;
-}
-
-.messages-table tbody tr:last-child {
-  border-bottom: none;
-}
-
-.messages-table tbody tr:hover {
-  background: var(--clr-surface-2);
-}
-
-/* Komórki */
-.messages-table td {
-  padding: 0.75rem 1rem;
-  vertical-align: top;
-  color: var(--clr-text);
-}
-
-/* Kolumna Data — nie łam linii */
-.msg-date {
-  white-space: nowrap;
-  color: var(--clr-text-muted);
-  font-size: 0.82rem;
-  font-weight: 500;
-}
-
-/* Kolumna Użytkownik */
-.msg-user {
-  font-weight: 600;
-  min-width: 160px;
-}
-
-/* Kolumna Temat */
-.msg-topic {
-  color: var(--clr-text);
-  min-width: 200px;
-}
-
-/* Kolumna Link */
-.msg-link {
-  white-space: nowrap;
-}
-
-/* Przycisk "Zaloguj się →" */
-.btn-login-link {
-  display: inline-block;
-  padding: 0.35rem 0.8rem;
-  background: var(--clr-primary-light);
-  color: var(--clr-primary-dark);
-  border-radius: var(--radius-sm);
-  font-size: 0.8rem;
-  font-weight: 600;
-  text-decoration: none;
-  transition: background 0.15s;
-  border: 1px solid #b3d9f0;
-}
-
-.btn-login-link:hover {
-  background: var(--clr-primary);
-  color: #fff;
-  text-decoration: none;
-  border-color: var(--clr-primary);
-}
-
-/* ── Pusty stan ─────────────────────────────────────────────── */
-.messages-empty {
-  background: var(--clr-surface);
-  border: 2px dashed var(--clr-border);
-  border-radius: var(--radius-md);
-  padding: var(--space-xl);
-  text-align: center;
-  color: var(--clr-text-muted);
-  font-size: 0.9rem;
-}
-
-.messages-empty span {
-  font-size: 2rem;
-  display: block;
-  margin-bottom: var(--space-sm);
-}
-
-.messages-empty-hint {
-  font-size: 0.82rem;
-  color: var(--clr-text-light);
-  margin-top: var(--space-xs);
-}
-
-/* ── Responsywność ──────────────────────────────────────────── */
-@media (max-width: 600px) {
-  .messages-header { flex-direction: column; align-items: flex-start; }
-  .messages-table th,
-  .messages-table td { padding: 0.6rem 0.75rem; }
-}
-
-/* ============================================================
-   Stronicowanie
-   ============================================================ */
-
-/* Licznik wiadomości przy tytule sekcji */
-.messages-count {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--clr-primary);
-  color: #fff;
   font-size: 0.72rem;
   font-weight: 700;
-  border-radius: 100px;
-  padding: 1px 8px;
-  margin-left: 8px;
-  vertical-align: middle;
-  font-family: var(--font-body);
-}
-
-/* Pasek stronicowania */
-.pagination {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: var(--space-md);
-  margin-top: var(--space-md);
-  padding-top: var(--space-md);
-  border-top: 1px solid var(--clr-border);
-}
-
-/* "1–10 z 334" */
-.pagination-info {
-  font-size: 0.82rem;
   color: var(--clr-text-muted);
-  font-weight: 500;
-}
-
-/* Przyciski stron */
-.pagination-controls {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.page-btn {
-  min-width: 34px;
-  height: 34px;
-  padding: 0 6px;
-  background: var(--clr-surface);
-  border: 1.5px solid var(--clr-border);
-  border-radius: var(--radius-sm);
-  font-size: 0.85rem;
-  font-weight: 500;
-  font-family: var(--font-body);
-  color: var(--clr-text-muted);
-  cursor: pointer;
-  transition: all 0.15s;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.page-btn:hover:not(:disabled) {
-  background: var(--clr-primary-light);
-  border-color: var(--clr-primary);
-  color: var(--clr-primary-dark);
-}
-
-/* Aktywna strona */
-.page-btn--active {
-  background: var(--clr-primary) !important;
-  border-color: var(--clr-primary) !important;
-  color: #fff !important;
-  font-weight: 700;
-}
-
-.page-btn:disabled {
-  opacity: 0.35;
-  cursor: not-allowed;
-}
-
-@media (max-width: 600px) {
-  .pagination { flex-direction: column; align-items: flex-start; }
-  .page-btn { min-width: 30px; height: 30px; font-size: 0.8rem; }
-}
-
-/* ── Przycisk sortowania w nagłówku tabeli ─────────────────── */
-.sort-btn {
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-size: 0.75rem;
-  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--clr-text-muted);
-  font-family: var(--font-body);
-  padding: 0;
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  transition: color 0.15s;
+  letter-spacing: 0.06em;
+  border-bottom: 1px solid var(--clr-border);
+  background: var(--clr-surface-2);
 }
-
-.sort-btn:hover {
-  color: var(--clr-primary);
+.payments-table td {
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--clr-border);
+  vertical-align: middle;
 }
+.payments-table tbody tr:last-child td { border-bottom: none; }
+.payments-table tbody tr:hover { background: var(--clr-primary-light); }
 
-.sort-arrow {
-  font-size: 0.9rem;
-  color: var(--clr-primary);
-  font-weight: 700;
-}
+/* ── Modal płatności / harmonogram ── */
+.modal-box--preschool .btn-save { background: var(--clr-preschool); }
+.modal-box--preschool .btn-save:hover { background: #d97706; }
 
-/* ============================================================
-   Własne wydarzenia szkolne + modal
-   ============================================================ */
-
-/* ── Przycisk Dodaj ─────────────────────────────────────────── */
-.btn-add {
-  padding: 0.45rem 1.1rem;
-  background: var(--clr-school);
-  color: #fff;
-  border: none;
-  border-radius: var(--radius-sm);
-  font-size: 0.85rem;
-  font-weight: 700;
-  font-family: var(--font-body);
-  cursor: pointer;
-  transition: background 0.15s, transform 0.1s;
-  white-space: nowrap;
-}
-
-.btn-add:hover {
-  background: #559e50;
-  transform: translateY(-1px);
-}
-
-/* ── Lista własnych wydarzeń ────────────────────────────────── */
-.events-user-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.event-user-card {
-  background: var(--clr-surface);
-  border: 1.5px solid var(--clr-border);
-  border-left: 4px solid var(--clr-school);
+.schedule-hint { font-size: 0.82rem; color: var(--clr-text-muted); }
+.schedule-grid {
+  border: 1px solid var(--clr-border);
   border-radius: var(--radius-md);
-  padding: var(--space-md) var(--space-lg);
-  display: flex;
-  align-items: center;
-  gap: var(--space-md);
-  transition: box-shadow 0.15s;
-}
-
-.event-user-card:hover {
-  box-shadow: var(--shadow-md);
-}
-
-.event-user-date {
-  font-size: 0.82rem;
-  font-weight: 700;
-  color: var(--clr-school);
-  white-space: nowrap;
-  min-width: 90px;
-}
-
-.event-user-note {
-  flex: 1;
-  font-size: 0.92rem;
-  color: var(--clr-text);
-  line-height: 1.4;
-}
-
-.btn-delete {
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-size: 1rem;
-  opacity: 0.4;
-  transition: opacity 0.15s;
-  padding: 4px;
-  flex-shrink: 0;
-}
-
-.btn-delete:hover {
-  opacity: 1;
-}
-
-/* ── Tło modalu ─────────────────────────────────────────────── */
-.modal-backdrop {
-  position: fixed;
-  inset: 0;                          /* pokrywa cały ekran */
-  background: rgba(0, 0, 0, 0.45);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  padding: var(--space-lg);
-  animation: fadeIn 0.15s ease-out;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to   { opacity: 1; }
-}
-
-/* ── Okno modalu ────────────────────────────────────────────── */
-.modal-box {
-  background: var(--clr-surface);
-  border-radius: var(--radius-lg);
-  width: 100%;
-  max-width: 440px;
-  max-height: 90vh;
-  box-shadow: var(--shadow-lg);
-  animation: slideUp 0.2s ease-out;
   overflow: hidden;
-  display: flex;
-  flex-direction: column;
 }
-
-/* Body scrolluje na desktopie gdy treść za długa */
-.modal-body {
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-}
-
-@keyframes slideUp {
-  from { transform: translateY(20px); opacity: 0; }
-  to   { transform: translateY(0);    opacity: 1; }
-}
-
-/* Nagłówek modalu */
-.modal-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: var(--space-lg);
+.schedule-grid-header {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+  padding: var(--space-3) var(--space-4);
+  background: var(--clr-surface-2);
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--clr-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
   border-bottom: 1px solid var(--clr-border);
 }
-
-.modal-title {
-  font-family: var(--font-display);
-  font-size: 1.1rem;
-  font-weight: 700;
-  color: var(--clr-text);
-}
-
-.modal-close {
-  background: none;
-  border: none;
-  font-size: 1.1rem;
-  cursor: pointer;
-  color: var(--clr-text-muted);
-  padding: 4px 8px;
-  border-radius: var(--radius-sm);
-  transition: background 0.15s;
-}
-
-.modal-close:hover {
-  background: var(--clr-error-bg);
-  color: var(--clr-error-text);
-}
-
-/* Treść modalu */
-.modal-body {
-  padding: var(--space-lg);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-md);
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-}
-
-/* Pole formularza */
-.modal-field {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.modal-field label {
-  font-size: 0.8rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--clr-text-muted);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.char-count {
-  font-size: 0.75rem;
-  font-weight: 400;
-  color: var(--clr-text-light);
-  text-transform: none;
-  letter-spacing: 0;
-}
-
-.modal-field input[type="date"],
-.modal-field textarea {
-  padding: 0.65rem var(--space-md);
-  border: 1.5px solid var(--clr-border);
-  border-radius: var(--radius-sm);
-  font-size: 0.92rem;
-  font-family: var(--font-body);
-  color: var(--clr-text);
-  background: var(--clr-surface-2);
-  outline: none;
-  transition: border-color 0.15s, box-shadow 0.15s;
-  width: 100%;
-  resize: vertical;
-}
-
-.modal-field input[type="date"]:focus,
-.modal-field textarea:focus {
-  border-color: var(--clr-school);
-  box-shadow: 0 0 0 3px rgba(106, 170, 100, 0.15);
-}
-
-.modal-error {
-  font-size: 0.85rem;
-  color: var(--clr-error-text);
-  background: var(--clr-error-bg);
-  border: 1px solid var(--clr-error-border);
-  border-radius: var(--radius-sm);
-  padding: var(--space-sm) var(--space-md);
-}
-
-/* Stopka modalu */
-.modal-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: var(--space-sm);
-  padding: var(--space-md) var(--space-lg);
-  border-top: 1px solid var(--clr-border);
-  background: var(--clr-surface-2);
-}
-
-.btn-cancel {
-  padding: 0.5rem 1rem;
-  background: transparent;
-  border: 1.5px solid var(--clr-border);
-  border-radius: var(--radius-sm);
-  font-size: 0.88rem;
-  font-weight: 500;
-  font-family: var(--font-body);
-  color: var(--clr-text-muted);
-  cursor: pointer;
-  transition: all 0.15s;
-}
-
-.btn-cancel:hover {
-  background: var(--clr-border);
-  color: var(--clr-text);
-}
-
-.btn-save {
-  padding: 0.5rem 1.2rem;
-  background: var(--clr-school);
-  color: #fff;
-  border: none;
-  border-radius: var(--radius-sm);
-  font-size: 0.88rem;
-  font-weight: 700;
-  font-family: var(--font-body);
-  cursor: pointer;
-  transition: background 0.15s, transform 0.1s;
-}
-
-.btn-save:hover {
-  background: #559e50;
-  transform: translateY(-1px);
-}
-
-@media (max-width: 500px) {
-  .modal-footer { flex-direction: column; }
-  .btn-cancel, .btn-save { width: 100%; text-align: center; }
-}
-
-/* ============================================================
-   Zakładki szkolne + tabela płatności
-   ============================================================ */
-
-/* ── Pasek zakładek ─────────────────────────────────────────── */
-.school-tabs {
-  display: flex;
-  gap: 4px;
-  background: var(--clr-surface);
-  border: 1.5px solid var(--clr-border);
-  border-radius: var(--radius-md);
-  padding: 4px;
-}
-
-.school-tab {
-  flex: 1;
-  padding: 0.55rem 0.75rem;
-  background: transparent;
-  border: none;
-  border-radius: var(--radius-sm);
-  font-size: 0.85rem;
-  font-weight: 500;
-  font-family: var(--font-body);
-  color: var(--clr-text-muted);
-  cursor: pointer;
-  transition: all 0.15s;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  white-space: nowrap;
-}
-
-.school-tab:hover:not(.school-tab--active) {
-  background: var(--clr-surface-2);
-  color: var(--clr-text);
-}
-
-.school-tab--active {
-  background: var(--clr-primary);
-  color: #fff;
-  font-weight: 700;
-}
-
-/* Plakietka licznika przy zakładce */
-.tab-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(255,255,255,0.3);
-  color: inherit;
-  font-size: 0.7rem;
-  font-weight: 700;
-  border-radius: 100px;
-  padding: 1px 6px;
-  min-width: 20px;
-}
-
-.school-tab:not(.school-tab--active) .tab-badge {
-  background: var(--clr-primary-light);
-  color: var(--clr-primary-dark);
-}
-
-/* ── Tabela płatności ───────────────────────────────────────── */
-.payments-table .pay-month {
-  font-weight: 600;
-  color: var(--clr-text);
-  min-width: 120px;
-}
-
-.payments-table .pay-amount {
-  font-family: var(--font-display);
-  font-size: 1rem;
-  font-weight: 700;
-  color: var(--clr-primary-dark);
-  white-space: nowrap;
-}
-
-.payments-table .pay-deadline {
-  white-space: nowrap;
-  color: var(--clr-text-muted);
-  font-size: 0.88rem;
-}
-
-/* Wiersz przeterminowany */
-.row-overdue {
-  background: var(--clr-error-bg) !important;
-}
-
-/* Plakietki statusu */
-.pay-badge {
-  display: inline-block;
-  padding: 3px 10px;
-  border-radius: 100px;
-  font-size: 0.75rem;
-  font-weight: 700;
-  white-space: nowrap;
-}
-
-.pay-badge--ok {
-  background: var(--clr-success-bg);
-  color: var(--clr-success-text);
-  border: 1px solid var(--clr-success-border);
-}
-
-.pay-badge--overdue {
-  background: var(--clr-error-bg);
-  color: var(--clr-error-text);
-  border: 1px solid var(--clr-error-border);
-}
-
-.pay-badge--unknown {
-  background: var(--clr-surface-2);
-  color: var(--clr-text-light);
-  border: 1px solid var(--clr-border);
-}
-
-/* ── Responsywność zakładek ─────────────────────────────────── */
-@media (max-width: 500px) {
-  .school-tabs   { flex-direction: column; }
-  .school-tab    { justify-content: flex-start; }
-}
-
-/* ── Status zapłacona ───────────────────────────────────────── */
-.pay-badge--paid {
-  background: #e8f5e9;
-  color: #2e7d32;
-  border: 1px solid #a5d6a7;
-}
-
-/* Wiersz zapłaconej płatności — wyszarzony */
-.row-paid {
-  opacity: 0.6;
-}
-
-.row-paid .pay-amount {
-  text-decoration: line-through;
-  color: var(--clr-text-muted);
-}
-
-/* Komórka ze statusem i przyciskiem */
-.pay-status-cell {
-  display: flex;
-  align-items: center;
+.schedule-grid-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
   gap: 8px;
-  white-space: nowrap;
+  padding: 6px var(--space-4);
+  align-items: center;
+  border-bottom: 1px solid var(--clr-border);
 }
-
-/* Przycisk "Zapłać" / "Cofnij" */
-.btn-mark-paid {
-  padding: 3px 10px;
-  border-radius: var(--radius-sm);
-  font-size: 0.75rem;
-  font-weight: 600;
-  font-family: var(--font-body);
-  cursor: pointer;
-  transition: all 0.15s;
-  white-space: nowrap;
-  background: var(--clr-success-bg);
-  color: var(--clr-success-text);
-  border: 1px solid var(--clr-success-border);
-}
-
-.btn-mark-paid:hover {
-  background: #16a34a;
-  color: #fff;
-  border-color: #16a34a;
-}
-
-.btn-mark-paid--undo {
-  background: var(--clr-surface-2);
-  color: var(--clr-text-muted);
-  border: 1px solid var(--clr-border);
-}
-
-.btn-mark-paid--undo:hover {
-  background: var(--clr-error-bg);
-  color: var(--clr-error-text);
-  border-color: var(--clr-error-border);
-}
-
-/* ── Suma roku szkolnego przy nagłówku ──────────────────────── */
-.pay-year-total {
-  display: inline-block;
-  font-family: var(--font-body);
+.schedule-grid-row:last-child { border-bottom: none; }
+.schedule-grid-row:nth-child(even) { background: var(--clr-bg); }
+.schedule-grid-row input {
+  padding: 4px 8px;
   font-size: 0.82rem;
-  font-weight: 600;
-  color: var(--clr-primary-dark);
-  background: var(--clr-primary-light);
-  border: 1px solid #b3d9f0;
-  border-radius: 100px;
-  padding: 2px 12px;
-  margin-left: 10px;
-  vertical-align: middle;
-  white-space: nowrap;
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius-sm);
+  background: var(--clr-surface);
+  color: var(--clr-text);
+  font-family: var(--font-body);
+  width: 100%;
 }
+.schedule-grid-row input:focus { outline: none; border-color: var(--clr-primary); box-shadow: 0 0 0 3px rgba(99,102,241,0.1); }
+.schedule-month { font-size: 0.82rem; color: var(--clr-text); font-weight: 500; }
+.schedule-grid-row--view span { font-size: 0.82rem; }
 
-/* ── Ręczna płatność — badge i komentarz ────────────────────── */
+.modal-field--checkbox { margin-top: 0; }
 .pay-manual-badge {
   display: inline-block;
-  font-size: 0.68rem;
+  font-size: 0.65rem;
   font-weight: 600;
-  background: #f0f4ff;
-  color: #4b6bfb;
-  border: 1px solid #c7d4fd;
-  border-radius: 100px;
+  background: var(--clr-primary-light);
+  color: var(--clr-primary);
+  border-radius: var(--radius-full);
   padding: 1px 7px;
-  margin-left: 7px;
-  vertical-align: middle;
+  margin-left: 6px;
 }
 
-.pay-komentarz {
-  font-size: 0.75rem;
-  color: var(--clr-text-muted);
-  margin-top: 3px;
-  font-style: italic;
-}
-
-/* ============================================================
-   MOBILE — szkoła i przedszkole
-   ============================================================ */
+/* ── Mobile ── */
 @media (max-width: 640px) {
+  .school-tabs { gap: 4px; }
 
-  /* Zakładki — poziome przewijanie */
-  .school-tabs {
-    gap: 4px;
-    padding: 3px;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-  }
-  .school-tabs::-webkit-scrollbar { display: none; }
+  .messages-header { flex-direction: column; align-items: stretch; gap: 8px; }
+  .messages-header > div { display: flex; gap: 8px; width: 100%; }
 
-  .school-tab {
-    font-size: 0.78rem;
-    padding: 8px 10px;
-    white-space: nowrap;
-    flex-shrink: 0;
-  }
+  .btn-refresh { flex: 1; justify-content: center; }
+  .btn-add { justify-content: center; }
 
-  /* Nagłówek sekcji — stack na mobile */
-  .messages-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 8px;
-  }
-  .messages-header > div { width: 100%; }
-  .messages-header > div { display: flex; gap: 8px; }
-
-  /* Przycisk odśwież — pełna szerokość */
-  .btn-refresh {
-    flex: 1;
-    justify-content: center;
-  }
-
-  /* Tabela wiadomości — karty zamiast tabeli */
-  .messages-table-wrap {
-    border-radius: var(--radius-md);
-    overflow: hidden;
-  }
-
-  .messages-table {
-    display: block;
-  }
-  .messages-table thead { display: none; } /* ukryj nagłówek tabeli */
-  .messages-table tbody { display: flex; flex-direction: column; gap: 8px; }
-  .messages-table tr {
-    display: flex;
-    flex-direction: column;
-    background: var(--clr-surface);
-    border: 1.5px solid var(--clr-border);
-    border-radius: var(--radius-md);
-    padding: 12px;
-    gap: 4px;
-  }
-  .messages-table td {
-    border: none;
-    padding: 0;
-    font-size: 0.85rem;
-  }
-  .messages-table td.msg-date {
-    font-size: 0.75rem;
-    color: var(--clr-text-muted);
-    order: -1;
-  }
-  .messages-table td.msg-user {
-    font-weight: 600;
-    color: var(--clr-text);
-  }
-  .messages-table td.msg-topic {
-    color: var(--clr-text-muted);
-    font-size: 0.82rem;
-  }
-  .messages-table td.msg-link {
-    margin-top: 4px;
-  }
-
-  /* Tabela płatności — kompaktowe karty 2-wierszowe */
+  .payments-table { display: block; }
   .payments-table thead { display: none; }
-  .payments-table tbody { display: flex; flex-direction: column; gap: 6px; }
-
-  /*
-   * Wiersz 1: [Miesiąc .............. Kwota]
-   * Wiersz 2: [Termin + Badge ...... Zapłać]
-   */
+  .payments-table tbody { display: flex; flex-direction: column; gap: 8px; }
   .payments-table tr {
     display: grid;
     grid-template-columns: 1fr auto;
     grid-template-rows: auto auto;
-    grid-template-areas:
-      "month  amount"
-      "status status";
     background: var(--clr-surface);
-    border: 1.5px solid var(--clr-border);
+    border: 1px solid var(--clr-border);
     border-radius: var(--radius-md);
-    padding: 10px 12px;
+    padding: 12px 14px;
     gap: 4px 8px;
-    align-items: center;
+    box-shadow: var(--shadow-xs);
   }
-  .payments-table tr.row-overdue {
-    border-color: var(--clr-error-border);
-    background: var(--clr-error-bg);
-  }
-  .payments-table tr.row-paid {
-    opacity: 0.55;
-    background: var(--clr-surface-2);
-  }
+  .payments-table tr.row-overdue { border-color: #fca5a5; background: var(--clr-error-light); }
+  .payments-table tr.row-paid { opacity: 0.55; }
+  .payments-table td { border: none; padding: 0; }
 
-  /* Wiersz 1 lewa: Miesiąc + termin w jednej linii */
-  .pay-month {
-    grid-area: month;
-    font-weight: 600;
-    font-size: 0.88rem;
-    color: var(--clr-text);
-    display: flex;
-    align-items: baseline;
-    gap: 6px;
-    flex-wrap: wrap;
-  }
-  .pay-komentarz {
-    font-size: 0.72rem;
-    color: var(--clr-text-muted);
-    font-style: italic;
-    font-weight: 400;
-  }
-
-  /* Termin jako inline suffix za nazwą miesiąca */
-  .pay-deadline {
-    grid-area: month; /* nadpisane przez JS — ukryte, termin wbudowany */
-    display: none;    /* ukrywamy osobną komórkę, termin w .pay-month */
-  }
-
-  /* Wiersz 1 prawa: Kwota */
-  .pay-amount {
-    grid-area: amount;
-    font-weight: 700;
-    font-size: 1rem;
-    color: var(--clr-primary-dark);
-    text-align: right;
-    white-space: nowrap;
-  }
-
-  /* Wiersz 2: termin + badge + przycisk w jednej linii */
+  .pay-month { grid-column: 1; grid-row: 1; font-size: 0.88rem; }
+  .pay-amount { grid-column: 2; grid-row: 1; font-size: 0.95rem; text-align: right; align-self: center; }
+  .pay-deadline { grid-column: 1; grid-row: 2; font-size: 0.72rem; color: var(--clr-text-muted); }
   .pay-status-cell {
-    grid-area: status;
+    grid-column: 1 / -1;
+    grid-row: 3;
     display: flex;
     align-items: center;
     gap: 6px;
     flex-wrap: nowrap;
-    overflow: hidden;
-  }
-  /* Termin wewnątrz status-cell jako pierwszy element */
-  .pay-status-cell::before {
-    content: attr(data-termin);
-    font-size: 0.72rem;
-    color: var(--clr-text-muted);
-    white-space: nowrap;
-    flex-shrink: 0;
-  }
-  .pay-badge {
-    font-size: 0.68rem !important;
-    padding: 2px 6px !important;
-    flex-shrink: 0;
+    margin-top: 2px;
   }
   .btn-mark-paid {
     margin-left: auto;
-    padding: 4px 10px !important;
+    padding: 4px 12px !important;
+    font-size: 0.75rem !important;
+    min-height: 30px !important;
+  }
+  .btn-delete, .btn-view-schedule {
+    width: 28px !important;
+    height: 28px !important;
+    min-height: 28px !important;
+    padding: 0 !important;
     font-size: 0.78rem !important;
-    min-height: 32px !important;
-    flex-shrink: 0;
-  }
-  .btn-view-schedule,
-  .btn-delete {
-    padding: 4px 8px !important;
-    font-size: 0.8rem !important;
-    min-height: 32px !important;
-    flex-shrink: 0;
   }
 
-  /* Suma roku szkolnego */
-  .pay-year-total {
-    font-size: 0.75rem;
-    display: block;
-    margin-left: 0;
-    margin-top: 4px;
-  }
+  .event-user-card { padding: 10px 12px; gap: 8px; }
 
-  /* Stronicowanie */
-  .pagination {
-    flex-direction: column;
-    gap: 8px;
-    align-items: center;
-  }
-
-  /* Własne wydarzenia */
-  .event-user-card {
-    padding: 10px 12px;
-    gap: 8px;
-  }
-
-  /* Modalne — wysuwa się od dołu jak iOS sheet */
-  .modal-backdrop {
-    align-items: flex-end;
-    z-index: 9999;
-    padding: 0;
-  }
-
-  /* Modal jako scrollowalny arkusz */
+  .modal-backdrop { align-items: flex-end; padding: 0; }
   .modal-box {
-    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-    /* Wysokość: cały ekran minus pasek statusu */
-    max-height: calc(100vh - 60px);
-    height: auto;
-    width: 100%;
-    max-width: 100%;
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+    max-height: 88vh;
+    overflow: hidden;
     display: flex;
     flex-direction: column;
-    animation: slideUpMobile 0.25s ease-out;
-    overflow: hidden; /* dzieci kontrolują scroll */
-  }
-
-  @keyframes slideUpMobile {
-    from { transform: translateY(100%); }
-    to   { transform: translateY(0); }
-  }
-
-  .modal-box--wide {
+    width: 100%;
     max-width: 100%;
-    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
   }
-
-  /* Nagłówek — przyklejony na górze */
-  .modal-header {
-    flex-shrink: 0;
-    padding: 16px 16px 12px;
-  }
-
-  /* Body — scrollowalne */
-  .modal-body {
-    flex: 1;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-    padding: 12px 16px;
-    overscroll-behavior: contain;
-  }
-
-  /* Footer — przyklejony na dole */
+  .modal-box--wide { max-width: 100%; border-radius: var(--radius-xl) var(--radius-xl) 0 0; }
   .modal-footer {
     flex-shrink: 0;
-    padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
-    border-top: 1px solid var(--clr-border);
+    padding-bottom: calc(12px + env(safe-area-inset-bottom));
     background: var(--clr-surface);
+    border-top: 1px solid var(--clr-border);
   }
+  .modal-field input, .modal-field textarea, .modal-field select { font-size: 16px !important; min-height: 44px; }
 
-  /* Inputy — 16px zapobiega auto-zoom iOS */
-  .modal-field input,
-  .modal-field textarea,
-  .modal-field select {
-    font-size: 16px !important;
-    min-height: 44px;
-    padding: 10px 12px;
-  }
-  .modal-field label { font-size: 0.88rem; }
-  .modal-field { margin-bottom: 12px; }
-
-  /* Checkbox — większy obszar dotyku */
-  .checkbox-label {
-    padding: 8px 0;
-    gap: 12px;
-  }
-  .checkbox-label input[type="checkbox"] {
-    width: 20px;
-    height: 20px;
-    flex-shrink: 0;
-  }
-
-  /* Przyciski akcji w tabeli */
-  .btn-mark-paid,
-  .btn-add,
-  .btn-refresh,
-  .btn-delete,
-  .btn-view-schedule {
-    min-height: 40px;
-    padding: 8px 14px;
-  }
-
-  /* Nagłówek sekcji */
-  .messages-header {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 8px;
-  }
-  .messages-header > div,
-  .messages-header > button { width: 100%; }
-  .btn-refresh { width: 100%; justify-content: center; }
+  .schedule-grid-header, .schedule-grid-row { grid-template-columns: 1.2fr 1fr 1fr; font-size: 0.75rem; }
+  .schedule-grid-row input { font-size: 14px; }
 }

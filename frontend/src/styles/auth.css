@@ -1,155 +1,109 @@
-/* ============================================================
-   auth.css — Style stron logowania i rejestracji
-   Zmiana: pastelowe kolory, cieplejsze tło
-   ============================================================ */
-
+/* ── Auth pages ── */
 .auth-page {
   min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: var(--space-lg);
-  /* Ciepły pastelowy gradient — rodzinny klimat */
-  background: linear-gradient(135deg, #dceef8 0%, #f5f0eb 50%, #fef3e2 100%);
+  background: linear-gradient(135deg, #eef2ff 0%, #f0f9ff 50%, #f0fdf4 100%);
+  padding: var(--space-4);
 }
 
 .auth-card {
   background: var(--clr-surface);
-  border-radius: var(--radius-lg);
-  padding: var(--space-2xl);
-  width: 100%;
-  max-width: 420px;
-  box-shadow: var(--shadow-lg);
   border: 1px solid var(--clr-border);
-  animation: cardIn 0.4s ease-out both;
+  border-radius: var(--radius-xl);
+  padding: var(--space-10) var(--space-8);
+  width: 100%;
+  max-width: 400px;
+  box-shadow: var(--shadow-xl);
 }
 
-@keyframes cardIn {
-  from { opacity: 0; transform: translateY(16px) scale(0.98); }
-  to   { opacity: 1; transform: translateY(0) scale(1); }
-}
-
-/* ── Logo / marka ───────────────────────────────────────────── */
-.auth-brand {
+.auth-logo {
   text-align: center;
-  margin-bottom: var(--space-xl);
+  margin-bottom: var(--space-8);
 }
-
-.auth-tooth {
-  font-size: 2.8rem;
-  display: block;
-  margin-bottom: var(--space-sm);
-  animation: float 3s ease-in-out infinite;
+.auth-logo-icon { font-size: 2.5rem; display: block; margin-bottom: var(--space-3); }
+.auth-logo-text {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--clr-primary);
+  letter-spacing: -0.02em;
 }
-
-@keyframes float {
-  0%, 100% { transform: translateY(0); }
-  50%       { transform: translateY(-6px); }
+.auth-logo-sub {
+  font-size: 0.8rem;
+  color: var(--clr-text-muted);
+  margin-top: var(--space-1);
 }
 
 .auth-title {
-  font-family: var(--font-display);
-  font-size: 1.9rem;
-  font-weight: 800;
-  color: var(--clr-primary);
-  letter-spacing: -0.03em;
-  line-height: 1.1;
-}
-
-.auth-subtitle {
-  color: var(--clr-text-muted);
-  font-size: 0.9rem;
-  margin-top: var(--space-xs);
-}
-
-/* ── Formularz ──────────────────────────────────────────────── */
-.auth-form {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-md);
-}
-
-.form-group {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.form-group label {
-  font-size: 0.8rem;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--clr-text-muted);
-}
-
-.form-group input {
-  padding: 0.7rem var(--space-md);
-  border: 1.5px solid var(--clr-border);
-  border-radius: var(--radius-sm);
-  font-size: 0.95rem;
-  font-family: var(--font-body);
+  font-size: 1.3rem;
+  font-weight: 700;
   color: var(--clr-text);
-  background: var(--clr-surface-2);
-  transition: border-color 0.2s, box-shadow 0.2s;
-  outline: none;
-}
-
-.form-group input:focus {
-  border-color: var(--clr-primary);
-  background: #fff;
-  box-shadow: 0 0 0 3px rgba(74, 144, 196, 0.15);
-}
-
-.form-group input::placeholder {
-  color: var(--clr-text-light);
-}
-
-/* ── Przycisk główny ────────────────────────────────────────── */
-.btn-primary {
-  padding: 0.75rem var(--space-lg);
-  background: var(--clr-primary);
-  color: #fff;
-  border: none;
-  border-radius: var(--radius-md);
-  font-size: 0.95rem;
-  font-weight: 600;
-  font-family: var(--font-body);
-  cursor: pointer;
-  transition: background 0.2s, transform 0.1s, box-shadow 0.2s;
-  margin-top: var(--space-sm);
-  box-shadow: 0 2px 8px rgba(74, 144, 196, 0.3);
-}
-
-.btn-primary:hover:not(:disabled) {
-  background: var(--clr-primary-dark);
-  box-shadow: 0 4px 16px rgba(74, 144, 196, 0.4);
-  transform: translateY(-1px);
-}
-
-.btn-primary:active:not(:disabled) {
-  transform: translateY(0);
-}
-
-.btn-primary:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.auth-switch {
   text-align: center;
-  margin-top: var(--space-lg);
+  margin-bottom: var(--space-2);
+}
+.auth-subtitle {
   font-size: 0.875rem;
   color: var(--clr-text-muted);
+  text-align: center;
+  margin-bottom: var(--space-8);
 }
 
-/* ── Mobile ────────────────────────────────────────────────── */
+.auth-form { display: flex; flex-direction: column; gap: var(--space-4); }
+
+.auth-field { display: flex; flex-direction: column; gap: var(--space-2); }
+.auth-field label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--clr-text-2);
+}
+.auth-field input {
+  padding: var(--space-3) var(--space-4);
+  background: var(--clr-bg);
+  border: 1.5px solid var(--clr-border);
+  border-radius: var(--radius-md);
+  font-size: 1rem;
+  font-family: var(--font-body);
+  color: var(--clr-text);
+  transition: all 0.15s;
+}
+.auth-field input:focus {
+  outline: none;
+  border-color: var(--clr-primary);
+  background: var(--clr-surface);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+.btn-primary {
+  padding: var(--space-3) var(--space-6);
+  background: var(--clr-primary);
+  border: none;
+  border-radius: var(--radius-full);
+  font-size: 0.95rem;
+  font-weight: 600;
+  font-family: var(--font-body);
+  color: #fff;
+  cursor: pointer;
+  transition: all 0.2s;
+  width: 100%;
+}
+.btn-primary:hover { background: var(--clr-primary-dark); transform: translateY(-1px); box-shadow: var(--shadow-lg); }
+.btn-primary:active { transform: translateY(0); }
+
+.auth-footer {
+  text-align: center;
+  margin-top: var(--space-6);
+  font-size: 0.85rem;
+  color: var(--clr-text-muted);
+}
+
 @media (max-width: 640px) {
-  .auth-page { padding: 16px; align-items: flex-end; }
+  .auth-page { align-items: flex-end; padding: 0; }
   .auth-card {
-    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-    padding: 28px 20px;
-    padding-bottom: calc(20px + env(safe-area-inset-bottom));
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+    padding: var(--space-8) var(--space-5);
+    padding-bottom: calc(var(--space-8) + env(safe-area-inset-bottom));
   }
-  .auth-form input { font-size: 16px; } /* brak auto-zoom iOS */
+  .auth-field input { font-size: 16px; }
 }
